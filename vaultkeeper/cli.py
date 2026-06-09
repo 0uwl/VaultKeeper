@@ -1,5 +1,5 @@
 """
-couchdb-cli — VaultKeeper CLI.
+couchdb-cli - VaultKeeper CLI.
 
 Credential resolution order (highest to lowest priority):
   1. CLI flags (--host, --admin, --password)
@@ -119,7 +119,7 @@ def common_options(f):
 @click.group()
 @click.version_option("0.1.0", prog_name="couchdb-cli")
 def cli():
-    """VaultKeeper — CouchDB management for Obsidian LiveSync."""
+    """VaultKeeper - CouchDB management for Obsidian LiveSync."""
 
 
 # ---------------------------------------------------------------------------

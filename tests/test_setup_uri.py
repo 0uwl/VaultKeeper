@@ -64,7 +64,7 @@ def test_generate_setup_uri_different_each_call(couchdb_client: CouchDB, managed
 
 
 def test_generate_setup_uri_missing_script_raises(couchdb_client: CouchDB, managed_vault, tmp_path):
-    """Missing script is caught before Deno is invoked — runs everywhere."""
+    """Missing script is caught before Deno is invoked - runs everywhere."""
     username, password, db_name = managed_vault
     client = CouchDB(
         host=couchdb_client.host,

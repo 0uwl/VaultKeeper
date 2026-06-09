@@ -1,7 +1,7 @@
 """
 Shared pytest fixtures for VaultKeeper tests.
 
-A real CouchDB instance is used for every test — no mocking.
+A real CouchDB instance is used for every test - no mocking.
 
 By default a CouchDB container is started automatically via testcontainers.
 Set COUCHDB_TEST_URL to point at an already-running instance instead:
@@ -131,7 +131,7 @@ def managed_vault(couchdb_client: CouchDB, managed_user):
 def pytest_collection_modifyitems(config, items):
     if shutil.which("deno") is not None:
         return
-    skip = pytest.mark.skip(reason="deno not on PATH — only runs inside the VaultKeeper container")
+    skip = pytest.mark.skip(reason="deno not on PATH - only runs inside the VaultKeeper container")
     for item in items:
         if item.get_closest_marker("requires_deno"):
             item.add_marker(skip)

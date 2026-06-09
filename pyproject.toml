@@ -30,5 +30,5 @@ packages = ["vaultkeeper"]
 [tool.pytest.ini_options]
 pythonpath = ["."]
 markers = [
-    "requires_deno: tests that need Deno and generate_setupuri.ts — only pass inside the VaultKeeper container",
+    "requires_deno: tests that need Deno and generate_setupuri.ts - only pass inside the VaultKeeper container",
 ]

@@ -21,6 +21,6 @@ def test_ping_bad_credentials(couchdb_client: CouchDB):
     bad_client = CouchDB(host=couchdb_client.host, username="wrong_user", password="wrong_pass")
     try:
         bad_client.ping()
-        # CouchDB's root endpoint may return 200 regardless of credentials — acceptable.
+        # CouchDB's root endpoint may return 200 regardless of credentials - acceptable.
     except CouchDBError:
         pass  # expected when auth is enforced

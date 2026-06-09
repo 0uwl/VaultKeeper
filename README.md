@@ -4,7 +4,7 @@ VaultKeeper makes it easy to create and manage [Obsidian Self-hosted LiveSync](h
 vaults in CouchDB. It runs as a sidecar container alongside your existing CouchDB instance.
 
 Instead of manually configuring databases, security documents, and setup URIs, VaultKeeper gives you a
-browser UI and a CLI that handle everything — getting a new user from zero to a syncing Obsidian vault
+browser UI and a CLI that handle everything - getting a new user from zero to a syncing Obsidian vault
 in minutes, without touching config files or curl commands.
 
 **Design principles:**
@@ -26,7 +26,7 @@ in minutes, without touching config files or curl commands.
 .
 ├── vaultkeeper/                    # Python package
 │   ├── __init__.py
-│   ├── client.py                   # Core CouchDB module — shared by CLI and web app
+│   ├── client.py                   # Core CouchDB module - shared by CLI and web app
 │   ├── cli.py                      # Click-based CLI (entry point: couchdb-cli)
 │   └── web/
 │       ├── __init__.py
@@ -67,7 +67,6 @@ Connection settings are resolved in the following order for each command:
 | `COUCHDB_USER`              | Admin username                            | prompted                        |
 | `COUCHDB_PASSWORD`          | Admin password                            | prompted                        |
 | `COUCHDB_PUBLIC_URL`        | External URL embedded in setup URIs       | falls back to `COUCHDB_HOST`    |
-| `LIVESYNC_SETUP_URI_SCRIPT` | Path to `generate_setupuri.ts`            | `/scripts/generate_setupuri.ts` |
 
 ### Commands
 
@@ -90,7 +89,7 @@ cli vault setup-uri <username> <vault_name>   # Generate a LiveSync setup URI
 cli provision <username> <vault_name>         # Create user + vault + setup URI in one step
 ```
 
-### `server login` — saving credentials
+### `server login` - saving credentials
 
 `cli server login` prompts for host, username, password, and optional
 public URL, verifies the credentials against CouchDB, then writes a plain-text
@@ -104,7 +103,7 @@ COUCHDB_PUBLIC_URL=https://couchdb.example.com
 ```
 
 Default location: `~/.vaultkeeper/credentials`. Override with
-`$VAULTKEEPER_CREDENTIALS`. Credentials are stored in plain text — this is an
+`$VAULTKEEPER_CREDENTIALS`. Credentials are stored in plain text - this is an
 intentional operator convenience.
 
 ### Vault naming scheme
@@ -135,9 +134,9 @@ link that configures the LiveSync plugin in one tap.
 
 Two passphrases are involved:
 
-- **E2E passphrase** — encrypts vault data at rest in CouchDB; baked into the
+- **E2E passphrase** - encrypts vault data at rest in CouchDB; baked into the
   setup URI payload; needed if onboarding a device manually without a URI
-- **URI passphrase** — encrypts the setup URI itself; Obsidian LiveSync prompts for
+- **URI passphrase** - encrypts the setup URI itself; Obsidian LiveSync prompts for
   this when the URI is pasted
 
 Both are auto-generated (using `secrets.choice`, 32 characters) if not
@@ -167,11 +166,11 @@ port **5984**.
 
 ### Technology
 
-- **Backend:** Python [Flask](https://flask.palletsprojects.com/) — shares core
+- **Backend:** Python [Flask](https://flask.palletsprojects.com/) - shares core
   logic via imports from `vaultkeeper.client`
 - **Frontend:** Server-rendered Jinja2 templates;
   [Bootstrap 5](https://getbootstrap.com/) via CDN, dark theme
-- **Port:** Flask runs on port **5985** — CouchDB's port 5984 is untouched
+- **Port:** Flask runs on port **5985** - CouchDB's port 5984 is untouched
 - **Auth:** Session-based login using `COUCHDB_USER` / `COUCHDB_PASSWORD`;
   the web UI is protected behind a login page; the Flask app authenticates to
   CouchDB as the server admin
@@ -179,20 +178,20 @@ port **5984**.
 ### Routes
 
 ```
-GET  /                            Dashboard — server status, user count, vault count
+GET  /                            Dashboard - server status, user count, vault count
 GET  /login                       Login page
 POST /login                       Authenticate
 POST /logout
 
 GET  /users                       List all users
 POST /users                       Create a user
-GET  /users/<username>            User detail — vaults, change password, delete
+GET  /users/<username>            User detail - vaults, change password, delete
 POST /users/<username>/delete     Delete a user
 POST /users/<username>/passwd     Change password
 
 GET  /vaults                      List all vaults
 POST /vaults                      Create a vault (username + vault_name)
-GET  /vaults/<db_name>            Vault detail — stats, actions
+GET  /vaults/<db_name>            Vault detail - stats, actions
 POST /vaults/<db_name>/compact    Trigger compaction
 POST /vaults/<db_name>/delete     Delete a vault
 GET  /vaults/<db_name>/setup-uri  Show setup URI form
@@ -225,11 +224,11 @@ behind a single HTTPS endpoint should place their own reverse proxy in front:
 
 A `docker-compose.yml` is included that runs both services together.
 [oleduc/docker-obsidian-livesync-couchdb](https://github.com/oleduc/docker-obsidian-livesync-couchdb)
-is used for the CouchDB container — it comes pre-configured for LiveSync so no
+is used for the CouchDB container - it comes pre-configured for LiveSync so no
 manual CouchDB setup is needed.
 
 ```bash
-# Set your credentials — COUCHDB_PUBLIC_URL is the external URL LiveSync clients will use
+# Set your credentials - COUCHDB_PUBLIC_URL is the external URL LiveSync clients will use
 export COUCHDB_PASSWORD=your-strong-password
 export COUCHDB_PUBLIC_URL=https://couchdb.example.com
 
@@ -244,8 +243,8 @@ should be placed behind a reverse proxy with TLS for production use.
 ### Using the CLI
 
 ```bash
-docker exec -it vaultkeeper-vaultkeeper-1 cli --help
-docker exec -it vaultkeeper-vaultkeeper-1 cli provision alice notes
+docker exec -it vk-server cli --help
+docker exec -it vk-server cli provision alice notes
 ```
 
 ---
@@ -271,7 +270,7 @@ Core dependencies: `click`, `requests`, `flask`
 
 ### Testing
 
-Tests run against a real CouchDB instance — no mocking. A
+Tests run against a real CouchDB instance - no mocking. A
 [testcontainers](https://testcontainers.com/) fixture starts a
 `couchdb:3.5.1` Docker container automatically.
 
@@ -282,3 +281,22 @@ COUCHDB_TEST_URL=http://localhost:5984 pytest   # use an existing instance
 
 Tests in `test_setup_uri.py` require Deno and `generate_setupuri.ts` and are
 automatically skipped when Deno is not on PATH (i.e. outside the container).
+
+---
+
+## Planned / known issues
+
+### Web application
+
+- **Flask app factory pattern** — the app is currently a module-level global.
+  Refactor to a `create_app()` factory in `vaultkeeper/web/__init__.py` to
+  support proper test isolation and app configuration.
+- **Production server** — Flask's built-in server is not suitable for
+  production. Replace `app.run()` with [Gunicorn](https://gunicorn.org/) as
+  the container entrypoint.
+
+### Observability
+
+- **Structured logging** — no logging is in place beyond Flask's default
+  request log. Add a proper logging setup with configurable levels
+  (`DEBUG` → `CRITICAL`) via a `LOG_LEVEL` environment variable.

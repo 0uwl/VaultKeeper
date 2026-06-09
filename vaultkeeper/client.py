@@ -1,5 +1,5 @@
 """
-vaultkeeper.client — CouchDB/LiveSync operations for VaultKeeper.
+vaultkeeper.client - CouchDB/LiveSync operations for VaultKeeper.
 
 Reads connection settings from environment variables:
   COUCHDB_HOST               CouchDB base URL        (default: http://localhost:5984)
@@ -71,7 +71,7 @@ class CouchDB:
     Thin wrapper around the CouchDB HTTP API.
 
     All methods raise CouchDBError (or its subclass ValidationError) on failure.
-    No output is written to stdout/stderr — callers handle presentation.
+    No output is written to stdout/stderr - callers handle presentation.
     """
 
     def __init__(

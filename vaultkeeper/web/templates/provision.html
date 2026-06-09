@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Provision — VaultKeeper{% endblock %}
+{% block title %}Provision - VaultKeeper{% endblock %}
 
 {% block content %}
 <h1 class="h3 mb-4">Provision</h1>
@@ -36,7 +36,7 @@
 
 {% else %}
 <div class="alert alert-warning">
-  <strong>⚠ Save these passphrases now.</strong> Store them in your password manager — they cannot be recovered.
+  <strong>⚠ Save these passphrases now.</strong> Store them in your password manager - they cannot be recovered.
   <dl class="row mt-2 mb-0">
     <dt class="col-sm-4">User</dt>
     <dd class="col-sm-8"><code>{{ result.username }}</code></dd>
@@ -59,7 +59,7 @@
     <p class="text-secondary small mb-2">
       In Obsidian: command palette →
       <em>Self-hosted LiveSync: Use the copied setup URI</em>
-      {% if result.uri_passphrase %} — enter the URI passphrase above when prompted.{% endif %}
+      {% if result.uri_passphrase %} - enter the URI passphrase above when prompted.{% endif %}
     </p>
     <div class="input-group">
       <code class="form-control vk-uri" id="setup-uri">{{ result.uri }}</code>

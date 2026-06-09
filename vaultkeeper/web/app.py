@@ -1,16 +1,17 @@
 """
-VaultKeeper — Flask web application.
+VaultKeeper - Flask web application.
 
 Entry point (installed script): vaultkeeper-web
 Manual run from repo root:  flask --app vaultkeeper.web.app run --host 0.0.0.0 --port 5985
 
 Environment variables:
   COUCHDB_HOST, COUCHDB_USER, COUCHDB_PASSWORD, COUCHDB_PUBLIC_URL
-  FLASK_SECRET_KEY      — set a stable value; sessions reset on restart if unset
-  VAULTKEEPER_WEB_PORT  — port for the web server (default: 5985)
+  FLASK_SECRET_KEY      - set a stable value; sessions reset on restart if unset
+  VAULTKEEPER_WEB_PORT  - port for the web server (default: 5985)
 """
 
 import os
+import sys
 from functools import wraps
 
 from flask import (
@@ -305,6 +306,10 @@ def provision():
 
 def main():
     port = int(os.environ.get("VAULTKEEPER_WEB_PORT", 5985))
+    try:
+        CouchDB().server_init()
+    except CouchDBError as e:
+        print(f"Warning: server init failed: {e}", file=sys.stderr)
     app.run(host="0.0.0.0", port=port, debug=False)
 
 
