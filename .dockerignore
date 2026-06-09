@@ -1,0 +1,26 @@
+# Git
+.git
+.gitignore
+.github
+
+# Documentation
+README.md
+CLAUDE.md
+*.md
+
+# Development / CI
+docker-compose.yml
+.vscode
+.idea
+
+# Python artefacts
+.venv
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+tests/
+
+# Temporary files
+*.tmp
+*.log

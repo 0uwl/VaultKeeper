@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Setup URI — {{ db_name }} — VaultKeeper{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-3 mb-4">
+  <h1 class="h3 mb-0">Setup URI</h1>
+  <a href="{{ url_for('vault_detail', db_name=db_name) }}"
+     class="btn btn-sm btn-outline-secondary">← {{ db_name }}</a>
+</div>
+
+{% if not result %}
+<div class="card">
+  <div class="card-body">
+    <p class="text-secondary mb-3">
+      Generate an <code>obsidian://</code> deep link that configures the LiveSync plugin in one tap.
+      Enter the <strong>vault user's password</strong> (not the admin password).
+      Passphrases are auto-generated if left blank.
+    </p>
+    <form method="post">
+      <div class="mb-3">
+        <label for="user_password" class="form-label">
+          Password for <strong>{{ username }}</strong>
+        </label>
+        <input id="user_password" name="user_password" type="password"
+               class="form-control" required autofocus>
+      </div>
+
+      <div class="mb-3">
+        <a class="text-secondary small" data-bs-toggle="collapse" href="#advancedOptions">
+          Advanced options ▾
+        </a>
+        <div class="collapse mt-2" id="advancedOptions">
+          <div class="mb-2">
+            <label for="passphrase" class="form-label">
+              E2E passphrase
+              <span class="text-secondary small">(auto-generated if blank)</span>
+            </label>
+            <input id="passphrase" name="passphrase" type="text"
+                   class="form-control" placeholder="auto-generated">
+          </div>
+          <div>
+            <label for="uri_passphrase" class="form-label">
+              URI passphrase
+              <span class="text-secondary small">(auto-generated if blank)</span>
+            </label>
+            <input id="uri_passphrase" name="uri_passphrase" type="text"
+                   class="form-control" placeholder="auto-generated">
+          </div>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary">Generate URI</button>
+    </form>
+  </div>
+</div>
+
+{% else %}
+<div class="alert alert-warning">
+  <strong>⚠ Save these passphrases now.</strong> Store them in your password manager — they cannot be recovered.
+  <dl class="row mt-2 mb-0">
+    {% if result.passphrase_generated %}
+    <dt class="col-sm-4">E2E passphrase <span class="badge bg-secondary">auto-generated</span></dt>
+    <dd class="col-sm-8"><code class="vk-secret">{{ result.passphrase }}</code></dd>
+    {% endif %}
+    {% if result.uri_passphrase and result.uri_passphrase_generated %}
+    <dt class="col-sm-4">URI passphrase <span class="badge bg-secondary">auto-generated</span></dt>
+    <dd class="col-sm-8"><code class="vk-secret">{{ result.uri_passphrase }}</code></dd>
+    {% endif %}
+  </dl>
+</div>
+
+<div class="card mb-3">
+  <div class="card-header">Setup URI</div>
+  <div class="card-body">
+    <p class="text-secondary small mb-2">
+      In Obsidian: command palette →
+      <em>Self-hosted LiveSync: Use the copied setup URI</em>
+      {% if result.uri_passphrase %} — enter the URI passphrase above when prompted.{% endif %}
+    </p>
+    <div class="input-group">
+      <code class="form-control vk-uri" id="setup-uri">{{ result.uri }}</code>
+      <button class="btn btn-outline-secondary" type="button" onclick="copyUri()">Copy</button>
+    </div>
+  </div>
+</div>
+
+<a href="{{ url_for('vault_setup_uri', db_name=db_name) }}" class="btn btn-outline-secondary">
+  Generate another URI
+</a>
+
+<script>
+function copyUri() {
+  navigator.clipboard.writeText(document.getElementById('setup-uri').textContent.trim());
+}
+</script>
+{% endif %}
+{% endblock %}

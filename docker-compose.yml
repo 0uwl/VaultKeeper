@@ -1,0 +1,33 @@
+services:
+  couchdb:
+    image: oleduc/docker-obsidian-livesync-couchdb:latest
+    restart: unless-stopped
+    environment:
+      COUCHDB_USER: ${COUCHDB_USER:-admin}
+      COUCHDB_PASSWORD: ${COUCHDB_PASSWORD:?COUCHDB_PASSWORD is required}
+    volumes:
+      - couchdb-data:/opt/couchdb/data
+    ports:
+      - "5984:5984"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:5984/_up"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  vaultkeeper:
+    image: 0uwl/vaultkeeper:latest
+    restart: unless-stopped
+    depends_on:
+      couchdb:
+        condition: service_healthy
+    environment:
+      COUCHDB_HOST: http://couchdb:5984
+      COUCHDB_USER: ${COUCHDB_USER:-admin}
+      COUCHDB_PASSWORD: ${COUCHDB_PASSWORD:?COUCHDB_PASSWORD is required}
+      COUCHDB_PUBLIC_URL: ${COUCHDB_PUBLIC_URL:-}
+    ports:
+      - "5985:5985"
+
+volumes:
+  couchdb-data:

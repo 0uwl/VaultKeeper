@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}{{ vault.name }} — VaultKeeper{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-3 mb-4">
+  <h1 class="h3 mb-0">{{ vault.name }}</h1>
+  <a href="{{ url_for('vaults') }}" class="btn btn-sm btn-outline-secondary">← Vaults</a>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card text-center">
+      <div class="card-body">
+        <div class="h4 mb-0">{{ "{:,}".format(vault.doc_count) }}</div>
+        <small class="text-secondary">Documents</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center">
+      <div class="card-body">
+        <div class="h4 mb-0">{{ "{:,}".format(vault.doc_del_count) }}</div>
+        <small class="text-secondary">Deleted docs</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center">
+      <div class="card-body">
+        <div class="h4 mb-0">{{ vault.data_size | fmt_bytes }}</div>
+        <small class="text-secondary">Data size</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center {% if vault.compact_needed %}border-warning{% endif %}">
+      <div class="card-body">
+        <div class="h4 mb-0">{{ vault.disk_size | fmt_bytes }}</div>
+        <small class="text-secondary">Disk size</small>
+        {% if vault.compact_needed %}
+          <br><span class="badge bg-warning text-dark">compaction recommended</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header">Actions</div>
+      <div class="card-body d-flex flex-wrap gap-2">
+        <a href="{{ url_for('vault_setup_uri', db_name=vault.name) }}"
+           class="btn btn-primary">Generate Setup URI</a>
+        <form method="post" action="{{ url_for('vault_compact', db_name=vault.name) }}">
+          <button type="submit" class="btn btn-outline-secondary">Compact</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card border-danger h-100">
+      <div class="card-header text-danger">Danger zone</div>
+      <div class="card-body">
+        <p class="text-secondary small">This permanently deletes all synced data in this vault.</p>
+        <form method="post" action="{{ url_for('vault_delete', db_name=vault.name) }}"
+              onsubmit="return confirm('Delete {{ vault.name }}? ALL DATA WILL BE LOST.')">
+          <button type="submit" class="btn btn-danger">Delete vault</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — VaultKeeper{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0">Dashboard</h1>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-sm-4">
+    <div class="card text-center h-100">
+      <div class="card-body">
+        <div class="display-5 fw-bold">{{ user_count }}</div>
+        <div class="text-secondary">Users</div>
+        <a href="{{ url_for('users') }}" class="stretched-link text-decoration-none">
+          <small>Manage users →</small>
+        </a>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="card text-center h-100">
+      <div class="card-body">
+        <div class="display-5 fw-bold">{{ vault_count }}</div>
+        <div class="text-secondary">Vaults</div>
+        <a href="{{ url_for('vaults') }}" class="stretched-link text-decoration-none">
+          <small>Manage vaults →</small>
+        </a>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="card text-center h-100">
+      <div class="card-body">
+        {% if server_info %}
+          <div class="display-5 fw-bold">{{ server_info.version }}</div>
+          <div class="text-secondary">CouchDB version</div>
+          <span class="badge bg-success">online</span>
+        {% else %}
+          <div class="display-5 fw-bold text-secondary">—</div>
+          <div class="text-secondary">CouchDB</div>
+          <span class="badge bg-danger">unreachable</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2 class="h5 mb-3">Quick actions</h2>
+<div class="d-flex flex-wrap gap-2">
+  <a href="{{ url_for('provision') }}" class="btn btn-primary">Provision new user</a>
+  <a href="{{ url_for('users') }}" class="btn btn-outline-secondary">Manage users</a>
+  <a href="{{ url_for('vaults') }}" class="btn btn-outline-secondary">Manage vaults</a>
+</div>
+{% endblock %}

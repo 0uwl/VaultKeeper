@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Users — VaultKeeper{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-4">Users</h1>
+
+{% if users %}
+<div class="table-responsive mb-4">
+  <table class="table table-hover align-middle">
+    <thead class="table-dark">
+      <tr>
+        <th>Username</th>
+        <th class="text-end">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for username in users %}
+      <tr>
+        <td>
+          <a href="{{ url_for('user_detail', username=username) }}" class="text-decoration-none">
+            {{ username }}
+          </a>
+        </td>
+        <td class="text-end">
+          <a href="{{ url_for('user_detail', username=username) }}"
+             class="btn btn-sm btn-outline-secondary me-1">View</a>
+          <form method="post" action="{{ url_for('user_delete', username=username) }}"
+                class="d-inline"
+                onsubmit="return confirm('Delete user {{ username }}? This cannot be undone.')">
+            <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="text-secondary">No users yet.</p>
+{% endif %}
+
+<div class="card">
+  <div class="card-header">Create user</div>
+  <div class="card-body">
+    <form method="post">
+      <div class="row g-3">
+        <div class="col-md-5">
+          <label for="username" class="form-label">Username</label>
+          <input id="username" name="username" type="text"
+                 class="form-control" placeholder="alice" required>
+        </div>
+        <div class="col-md-5">
+          <label for="password" class="form-label">Password</label>
+          <input id="password" name="password" type="password" class="form-control" required>
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+          <button type="submit" class="btn btn-primary w-100">Create</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

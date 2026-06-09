@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}VaultKeeper{% endblock %}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  {% if session.logged_in %}
+  <nav class="navbar navbar-expand-md navbar-dark bg-dark border-bottom border-secondary mb-4">
+    <div class="container-lg">
+      <a class="navbar-brand fw-bold" href="{{ url_for('dashboard') }}">VaultKeeper</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navMenu">
+        <ul class="navbar-nav me-auto">
+          <li class="nav-item">
+            <a class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}"
+               href="{{ url_for('dashboard') }}">Dashboard</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if request.endpoint in ('users', 'user_detail') %}active{% endif %}"
+               href="{{ url_for('users') }}">Users</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if request.endpoint in ('vaults', 'vault_detail', 'vault_setup_uri') %}active{% endif %}"
+               href="{{ url_for('vaults') }}">Vaults</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if request.endpoint == 'provision' %}active{% endif %}"
+               href="{{ url_for('provision') }}">Provision</a>
+          </li>
+        </ul>
+        <form action="{{ url_for('logout') }}" method="post" class="d-flex">
+          <button type="submit" class="btn btn-outline-secondary btn-sm">Logout</button>
+        </form>
+      </div>
+    </div>
+  </nav>
+  {% endif %}
+
+  <div class="container-lg">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

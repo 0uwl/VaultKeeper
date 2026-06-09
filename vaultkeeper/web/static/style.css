@@ -1,0 +1,19 @@
+/* VaultKeeper — Bootstrap overrides and custom components */
+
+/* Monospace code blocks used for secrets and setup URIs */
+.vk-secret {
+  font-family: var(--bs-font-monospace);
+  font-size: 0.875em;
+  word-break: break-all;
+}
+
+/* Setup URI display inside an input-group */
+.vk-uri {
+  font-family: var(--bs-font-monospace);
+  font-size: 0.75em;
+  color: var(--bs-secondary-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  height: auto;
+}

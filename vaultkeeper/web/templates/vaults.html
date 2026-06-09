@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Vaults — VaultKeeper{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-4">Vaults</h1>
+
+{% if vaults %}
+<div class="table-responsive mb-4">
+  <table class="table table-hover align-middle">
+    <thead class="table-dark">
+      <tr>
+        <th>Database</th>
+        <th class="text-end">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for db in vaults %}
+      <tr>
+        <td>
+          <a href="{{ url_for('vault_detail', db_name=db) }}" class="text-decoration-none">
+            {{ db }}
+          </a>
+        </td>
+        <td class="text-end">
+          <a href="{{ url_for('vault_detail', db_name=db) }}"
+             class="btn btn-sm btn-outline-secondary me-1">View</a>
+          <a href="{{ url_for('vault_setup_uri', db_name=db) }}"
+             class="btn btn-sm btn-outline-primary me-1">Setup URI</a>
+          <form method="post" action="{{ url_for('vault_delete', db_name=db) }}"
+                class="d-inline"
+                onsubmit="return confirm('Delete vault {{ db }}? ALL DATA WILL BE LOST.')">
+            <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="text-secondary">No vaults yet.</p>
+{% endif %}
+
+<div class="card">
+  <div class="card-header">Create vault</div>
+  <div class="card-body">
+    <p class="text-secondary small mb-3">
+      Database will be named <code>vault_&lt;username&gt;_&lt;vault_name&gt;</code>.
+      The user must already exist.
+    </p>
+    <form method="post">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label for="username" class="form-label">Username</label>
+          <input id="username" name="username" type="text"
+                 class="form-control" placeholder="alice" required>
+        </div>
+        <div class="col-md-4">
+          <label for="vault_name" class="form-label">Vault name</label>
+          <input id="vault_name" name="vault_name" type="text"
+                 class="form-control" placeholder="notes" required>
+        </div>
+        <div class="col-md-4 d-flex align-items-end">
+          <button type="submit" class="btn btn-primary w-100">Create vault</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

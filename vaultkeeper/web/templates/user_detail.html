@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}{{ username }} — VaultKeeper{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-3 mb-4">
+  <h1 class="h3 mb-0">{{ username }}</h1>
+  <a href="{{ url_for('users') }}" class="btn btn-sm btn-outline-secondary">← Users</a>
+</div>
+
+<h2 class="h5 mb-3">Vaults</h2>
+{% if vaults %}
+<div class="table-responsive mb-4">
+  <table class="table table-hover align-middle">
+    <thead class="table-dark">
+      <tr>
+        <th>Database</th>
+        <th class="text-end">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for db in vaults %}
+      <tr>
+        <td>
+          <a href="{{ url_for('vault_detail', db_name=db) }}" class="text-decoration-none">
+            {{ db }}
+          </a>
+        </td>
+        <td class="text-end">
+          <a href="{{ url_for('vault_detail', db_name=db) }}"
+             class="btn btn-sm btn-outline-secondary me-1">View</a>
+          <a href="{{ url_for('vault_setup_uri', db_name=db) }}"
+             class="btn btn-sm btn-outline-primary">Setup URI</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="text-secondary mb-4">No vaults for this user.</p>
+{% endif %}
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header">Change password</div>
+      <div class="card-body">
+        <form method="post" action="{{ url_for('user_passwd', username=username) }}">
+          <div class="mb-3">
+            <label for="password" class="form-label">New password</label>
+            <input id="password" name="password" type="password" class="form-control" required>
+          </div>
+          <button type="submit" class="btn btn-primary">Update password</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card border-danger h-100">
+      <div class="card-header text-danger">Danger zone</div>
+      <div class="card-body">
+        <p class="text-secondary small">Deleting this user does not delete their vault databases.</p>
+        <form method="post" action="{{ url_for('user_delete', username=username) }}"
+              onsubmit="return confirm('Delete user {{ username }}? This cannot be undone.')">
+          <button type="submit" class="btn btn-danger">Delete user</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

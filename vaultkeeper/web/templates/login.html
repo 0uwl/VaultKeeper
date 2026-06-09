@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Login — VaultKeeper{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+  <div class="col-sm-8 col-md-5 col-lg-4">
+    <h1 class="h3 text-center mb-1">VaultKeeper</h1>
+    <p class="text-center text-secondary mb-4">CouchDB management for Obsidian LiveSync</p>
+
+    <div class="card">
+      <div class="card-body p-4">
+        <form method="post">
+          <div class="mb-3">
+            <label for="username" class="form-label">Username</label>
+            <input id="username" name="username" type="text"
+                   class="form-control" autocomplete="username" autofocus required>
+          </div>
+          <div class="mb-3">
+            <label for="password" class="form-label">Password</label>
+            <input id="password" name="password" type="password"
+                   class="form-control" autocomplete="current-password" required>
+          </div>
+          <button type="submit" class="btn btn-primary w-100">Sign in</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
