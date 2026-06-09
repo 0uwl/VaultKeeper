@@ -214,7 +214,7 @@ behind a single HTTPS endpoint should place their own reverse proxy in front:
 
 ## Publishing
 
-**Docker Hub:** `0uwl/vaultkeeper`
+**GitHub Container Registry:** `ghcr.io/0uwl/vaultkeeper`
 
 **Versioning:** Semantic versioning. Example: `1.0.0`.
 
@@ -222,10 +222,9 @@ behind a single HTTPS endpoint should place their own reverse proxy in front:
 
 ## Quick start
 
-A `docker-compose.yml` is included that runs both services together.
-[oleduc/docker-obsidian-livesync-couchdb](https://github.com/oleduc/docker-obsidian-livesync-couchdb)
-is used for the CouchDB container - it comes pre-configured for LiveSync so no
-manual CouchDB setup is needed.
+A `compose.yml` is included that runs both services together using the official
+`couchdb:3.3` image. VaultKeeper automatically applies the required LiveSync
+CouchDB configuration on startup — no manual CouchDB setup is needed.
 
 ```bash
 # Set your credentials - COUCHDB_PUBLIC_URL is the external URL LiveSync clients will use
