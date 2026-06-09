@@ -4,9 +4,9 @@
 .github
 
 # Documentation
-README.md
 CLAUDE.md
 *.md
+!README.md
 
 # Development / CI
 docker-compose.yml
