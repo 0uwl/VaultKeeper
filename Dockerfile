@@ -13,6 +13,7 @@ ENV PATH="/root/.deno/bin:$PATH"
 WORKDIR /app
 
 COPY pyproject.toml .
+COPY README.md .
 COPY vaultkeeper/ vaultkeeper/
 RUN pip install --no-cache-dir .
 
