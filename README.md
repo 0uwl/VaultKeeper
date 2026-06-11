@@ -169,7 +169,7 @@ The CLI always connects as the server admin.
 
 ---
 
-## Web application (`vaultkeeper-web`)
+## Web application (`web`)
 
 A browser-based management UI that replaces the need for `docker exec` and CLI
 usage for day-to-day operations. Runs on port **5985** alongside CouchDB on
@@ -264,7 +264,7 @@ docker build -t vaultkeeper .
 Defined in `pyproject.toml`. To install for local development:
 
 ```bash
-pip install -e .             # installs cli and vaultkeeper-web scripts
+pip install -e .             # installs cli and web scripts
 pip install -e ".[dev]"      # also installs pytest and testcontainers
 pip install -e ".[serve]"    # also installs gunicorn
 ```

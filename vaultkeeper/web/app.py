@@ -1,7 +1,7 @@
 """
 VaultKeeper - Flask web application.
 
-Entry point (installed script): vaultkeeper-web
+Entry point (installed script): web
 Manual run from repo root:  flask --app vaultkeeper.web.app:create_app run --host 0.0.0.0 --port 5985
 Gunicorn:                   gunicorn "vaultkeeper.web.app:create_app()"  (picks up gunicorn.conf.py automatically)
 
