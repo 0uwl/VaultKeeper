@@ -13,14 +13,14 @@ from flask import (
 
 from vaultkeeper.client import CouchDB, CouchDBError, ValidationError
 
-bp = Blueprint("main", __name__)
+index = Blueprint("index", __name__)
 
 
 # ---------------------------------------------------------------------------
 # Jinja2 filter
 # ---------------------------------------------------------------------------
 
-@bp.app_template_filter("fmt_bytes")
+@index.app_template_filter("fmt_bytes")
 def fmt_bytes(value: int) -> str:
     for unit in ("B", "KB", "MB", "GB"):
         if value < 1024:
@@ -41,7 +41,7 @@ def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         if not session.get("logged_in"):
-            return redirect(url_for("main.login"))
+            return redirect(url_for("index.login"))
         return f(*args, **kwargs)
     return decorated
 
@@ -50,10 +50,10 @@ def login_required(f):
 # Auth routes
 # ---------------------------------------------------------------------------
 
-@bp.route("/login", methods=["GET", "POST"])
+@index.route("/login", methods=["GET", "POST"])
 def login():
     if session.get("logged_in"):
-        return redirect(url_for("main.dashboard"))
+        return redirect(url_for("index.dashboard"))
 
     if request.method == "POST":
         username = request.form.get("username", "")
@@ -65,7 +65,7 @@ def login():
             try:
                 CouchDB(username=username, password=password).ping()
                 session["logged_in"] = True
-                return redirect(url_for("main.dashboard"))
+                return redirect(url_for("index.dashboard"))
             except CouchDBError as e:
                 flash(str(e), "error")
         else:
@@ -74,17 +74,17 @@ def login():
     return render_template("login.html")
 
 
-@bp.route("/logout", methods=["POST"])
+@index.route("/logout", methods=["POST"])
 def logout():
     session.clear()
-    return redirect(url_for("main.login"))
+    return redirect(url_for("index.login"))
 
 
 # ---------------------------------------------------------------------------
 # Dashboard
 # ---------------------------------------------------------------------------
 
-@bp.route("/")
+@index.route("/")
 @login_required
 def dashboard():
     client = _get_client()
@@ -107,7 +107,7 @@ def dashboard():
 # Users
 # ---------------------------------------------------------------------------
 
-@bp.route("/users", methods=["GET", "POST"])
+@index.route("/users", methods=["GET", "POST"])
 @login_required
 def users():
     client = _get_client()
@@ -120,7 +120,7 @@ def users():
             flash(f"User '{username}' created.", "success")
         except (CouchDBError, ValidationError) as e:
             flash(str(e), "error")
-        return redirect(url_for("main.users"))
+        return redirect(url_for("index.users"))
 
     try:
         user_list = client.list_users()
@@ -130,14 +130,14 @@ def users():
     return render_template("users.html", users=user_list)
 
 
-@bp.route("/users/<username>")
+@index.route("/users/<username>")
 @login_required
 def user_detail(username):
     client = _get_client()
     try:
         if not client.user_exists(username):
             flash(f"User '{username}' not found.", "error")
-            return redirect(url_for("main.users"))
+            return redirect(url_for("index.users"))
         vaults = client.list_vaults_for_user(username)
     except CouchDBError as e:
         flash(str(e), "error")
@@ -145,7 +145,7 @@ def user_detail(username):
     return render_template("user_detail.html", username=username, vaults=vaults)
 
 
-@bp.route("/users/<username>/delete", methods=["POST"])
+@index.route("/users/<username>/delete", methods=["POST"])
 @login_required
 def user_delete(username):
     client = _get_client()
@@ -154,10 +154,10 @@ def user_delete(username):
         flash(f"User '{username}' deleted.", "success")
     except CouchDBError as e:
         flash(str(e), "error")
-    return redirect(url_for("main.users"))
+    return redirect(url_for("index.users"))
 
 
-@bp.route("/users/<username>/passwd", methods=["POST"])
+@index.route("/users/<username>/passwd", methods=["POST"])
 @login_required
 def user_passwd(username):
     client = _get_client()
@@ -166,14 +166,14 @@ def user_passwd(username):
         flash(f"Password updated for '{username}'.", "success")
     except CouchDBError as e:
         flash(str(e), "error")
-    return redirect(url_for("main.user_detail", username=username))
+    return redirect(url_for("index.user_detail", username=username))
 
 
 # ---------------------------------------------------------------------------
 # Vaults
 # ---------------------------------------------------------------------------
 
-@bp.route("/vaults", methods=["GET", "POST"])
+@index.route("/vaults", methods=["GET", "POST"])
 @login_required
 def vaults():
     client = _get_client()
@@ -184,10 +184,10 @@ def vaults():
         try:
             db_name = client.create_vault(username, vault_name)
             flash(f"Vault '{db_name}' created.", "success")
-            return redirect(url_for("main.vault_detail", db_name=db_name))
+            return redirect(url_for("index.vault_detail", db_name=db_name))
         except (CouchDBError, ValidationError) as e:
             flash(str(e), "error")
-            return redirect(url_for("main.vaults"))
+            return redirect(url_for("index.vaults"))
 
     try:
         vault_list = client.list_all_vaults()
@@ -197,7 +197,7 @@ def vaults():
     return render_template("vaults.html", vaults=vault_list)
 
 
-@bp.route("/vaults/<db_name>")
+@index.route("/vaults/<db_name>")
 @login_required
 def vault_detail(db_name):
     client = _get_client()
@@ -205,11 +205,11 @@ def vault_detail(db_name):
         info = client.vault_info(db_name)
     except CouchDBError as e:
         flash(str(e), "error")
-        return redirect(url_for("main.vaults"))
+        return redirect(url_for("index.vaults"))
     return render_template("vault_detail.html", vault=info)
 
 
-@bp.route("/vaults/<db_name>/compact", methods=["POST"])
+@index.route("/vaults/<db_name>/compact", methods=["POST"])
 @login_required
 def vault_compact(db_name):
     client = _get_client()
@@ -218,10 +218,10 @@ def vault_compact(db_name):
         flash(f"Compaction started for '{db_name}'.", "success")
     except CouchDBError as e:
         flash(str(e), "error")
-    return redirect(url_for("main.vault_detail", db_name=db_name))
+    return redirect(url_for("index.vault_detail", db_name=db_name))
 
 
-@bp.route("/vaults/<db_name>/delete", methods=["POST"])
+@index.route("/vaults/<db_name>/delete", methods=["POST"])
 @login_required
 def vault_delete(db_name):
     client = _get_client()
@@ -230,16 +230,16 @@ def vault_delete(db_name):
         flash(f"Vault '{db_name}' deleted.", "success")
     except CouchDBError as e:
         flash(str(e), "error")
-    return redirect(url_for("main.vaults"))
+    return redirect(url_for("index.vaults"))
 
 
-@bp.route("/vaults/<db_name>/setup-uri", methods=["GET", "POST"])
+@index.route("/vaults/<db_name>/setup-uri", methods=["GET", "POST"])
 @login_required
 def vault_setup_uri(db_name):
     client = _get_client()
     if not client.db_exists(db_name):
         flash(f"Vault '{db_name}' not found.", "error")
-        return redirect(url_for("main.vaults"))
+        return redirect(url_for("index.vaults"))
 
     parts = db_name.split("_", 2)
     username = parts[1] if len(parts) >= 2 else ""
@@ -264,7 +264,7 @@ def vault_setup_uri(db_name):
 # Provision
 # ---------------------------------------------------------------------------
 
-@bp.route("/provision", methods=["GET", "POST"])
+@index.route("/provision", methods=["GET", "POST"])
 @login_required
 def provision():
     result = None

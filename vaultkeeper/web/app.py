@@ -3,7 +3,7 @@ VaultKeeper - Flask web application.
 
 Entry point (installed script): vaultkeeper-web
 Manual run from repo root:  flask --app vaultkeeper.web.app:create_app run --host 0.0.0.0 --port 5985
-Gunicorn:                   gunicorn "vaultkeeper.web.app:create_app()"
+Gunicorn:                   gunicorn "vaultkeeper.web.app:create_app()"  (picks up gunicorn.conf.py automatically)
 
 Environment variables:
   COUCHDB_HOST, COUCHDB_USER, COUCHDB_PASSWORD, COUCHDB_PUBLIC_URL
@@ -27,8 +27,8 @@ def create_app() -> Flask:
     app = Flask(__name__)
     app.secret_key = os.environ.get("FLASK_SECRET_KEY") or os.urandom(24)
 
-    from vaultkeeper.web.routes import bp
-    app.register_blueprint(bp)
+    from vaultkeeper.web.index import index
+    app.register_blueprint(index)
 
     return app
 

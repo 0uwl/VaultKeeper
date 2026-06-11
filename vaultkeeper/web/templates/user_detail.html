@@ -4,7 +4,7 @@
 {% block content %}
 <div class="d-flex align-items-center gap-3 mb-4">
   <h1 class="h3 mb-0">{{ username }}</h1>
-  <a href="{{ url_for('main.users') }}" class="btn btn-sm btn-outline-secondary">← Users</a>
+  <a href="{{ url_for('index.users') }}" class="btn btn-sm btn-outline-secondary">← Users</a>
 </div>
 
 <h2 class="h5 mb-3">Vaults</h2>
@@ -21,14 +21,14 @@
       {% for db in vaults %}
       <tr>
         <td>
-          <a href="{{ url_for('main.vault_detail', db_name=db) }}" class="text-decoration-none">
+          <a href="{{ url_for('index.vault_detail', db_name=db) }}" class="text-decoration-none">
             {{ db }}
           </a>
         </td>
         <td class="text-end">
-          <a href="{{ url_for('main.vault_detail', db_name=db) }}"
+          <a href="{{ url_for('index.vault_detail', db_name=db) }}"
              class="btn btn-sm btn-outline-secondary me-1">View</a>
-          <a href="{{ url_for('main.vault_setup_uri', db_name=db) }}"
+          <a href="{{ url_for('index.vault_setup_uri', db_name=db) }}"
              class="btn btn-sm btn-outline-primary">Setup URI</a>
         </td>
       </tr>
@@ -45,7 +45,7 @@
     <div class="card h-100">
       <div class="card-header">Change password</div>
       <div class="card-body">
-        <form method="post" action="{{ url_for('main.user_passwd', username=username) }}">
+        <form method="post" action="{{ url_for('index.user_passwd', username=username) }}">
           <div class="mb-3">
             <label for="password" class="form-label">New password</label>
             <input id="password" name="password" type="password" class="form-control" required>
@@ -61,7 +61,7 @@
       <div class="card-header text-danger">Danger zone</div>
       <div class="card-body">
         <p class="text-secondary small">Deleting this user does not delete their vault databases.</p>
-        <form method="post" action="{{ url_for('main.user_delete', username=username) }}"
+        <form method="post" action="{{ url_for('index.user_delete', username=username) }}"
               onsubmit="return confirm('Delete user {{ username }}? This cannot be undone.')">
           <button type="submit" class="btn btn-danger">Delete user</button>
         </form>
