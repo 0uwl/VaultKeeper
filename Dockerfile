@@ -15,16 +15,20 @@ WORKDIR /app
 COPY pyproject.toml .
 COPY README.md .
 COPY vaultkeeper/ vaultkeeper/
-RUN pip install --no-cache-dir .
+COPY gunicorn.conf.py .
+RUN pip install --no-cache-dir ".[serve]"
 
 # Download the LiveSync setup URI generator from upstream
 RUN mkdir -p /scripts && \
     curl -fsSL https://raw.githubusercontent.com/vrtmrz/obsidian-livesync/main/utils/flyio/generate_setupuri.ts \
     -o /scripts/generate_setupuri.ts
 
+COPY docker-entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 EXPOSE 5985
 
 ENV COUCHDB_HOST=http://localhost:5984
 ENV VAULTKEEPER_WEB_PORT=5985
 
-CMD ["vaultkeeper-web"]
+ENTRYPOINT ["/entrypoint.sh"]
