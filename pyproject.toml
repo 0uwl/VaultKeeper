@@ -23,6 +23,9 @@ dev = [
     "pytest>=8.0",
     "testcontainers>=4.0",
 ]
+serve = [
+    "gunicorn>=21.0",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["vaultkeeper"]

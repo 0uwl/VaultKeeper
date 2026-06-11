@@ -17,16 +17,16 @@
       {% for db in vaults %}
       <tr>
         <td>
-          <a href="{{ url_for('vault_detail', db_name=db) }}" class="text-decoration-none">
+          <a href="{{ url_for('main.vault_detail', db_name=db) }}" class="text-decoration-none">
             {{ db }}
           </a>
         </td>
         <td class="text-end">
-          <a href="{{ url_for('vault_detail', db_name=db) }}"
+          <a href="{{ url_for('main.vault_detail', db_name=db) }}"
              class="btn btn-sm btn-outline-secondary me-1">View</a>
-          <a href="{{ url_for('vault_setup_uri', db_name=db) }}"
+          <a href="{{ url_for('main.vault_setup_uri', db_name=db) }}"
              class="btn btn-sm btn-outline-primary me-1">Setup URI</a>
-          <form method="post" action="{{ url_for('vault_delete', db_name=db) }}"
+          <form method="post" action="{{ url_for('main.vault_delete', db_name=db) }}"
                 class="d-inline"
                 onsubmit="return confirm('Delete vault {{ db }}? ALL DATA WILL BE LOST.')">
             <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>

@@ -69,9 +69,9 @@
 </div>
 
 <div class="d-flex gap-2">
-  <a href="{{ url_for('user_detail', username=result.username) }}"
+  <a href="{{ url_for('main.user_detail', username=result.username) }}"
      class="btn btn-outline-secondary">View user</a>
-  <a href="{{ url_for('provision') }}" class="btn btn-primary">Provision another</a>
+  <a href="{{ url_for('main.provision') }}" class="btn btn-primary">Provision another</a>
 </div>
 
 <script>

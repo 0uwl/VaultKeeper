@@ -30,7 +30,8 @@ in minutes, without touching config files or curl commands.
 │   ├── cli.py                      # Click-based CLI (entry point: couchdb-cli)
 │   └── web/
 │       ├── __init__.py
-│       ├── app.py                  # Flask web application (entry point: vaultkeeper-web)
+│       ├── app.py                  # Flask app factory (create_app) + main() entry point
+│       ├── routes.py               # Blueprint "main" - all route handlers
 │       ├── templates/              # Jinja2 HTML templates (Bootstrap 5)
 │       └── static/                 # CSS overrides
 ├── tests/
@@ -261,11 +262,20 @@ docker build -t vaultkeeper .
 Defined in `pyproject.toml`. To install for local development:
 
 ```bash
-pip install -e .           # installs cli and vaultkeeper-web scripts
-pip install -e ".[dev]"    # also installs pytest and testcontainers
+pip install -e .             # installs cli and vaultkeeper-web scripts
+pip install -e ".[dev]"      # also installs pytest and testcontainers
+pip install -e ".[serve]"    # also installs gunicorn
 ```
 
 Core dependencies: `click`, `requests`, `flask`
+
+### Running with Gunicorn
+
+```bash
+pip install -e ".[serve]"
+cli server init   # run once to configure CouchDB
+gunicorn "vaultkeeper.web.app:create_app()"
+```
 
 ### Testing
 
@@ -284,15 +294,6 @@ automatically skipped when Deno is not on PATH (i.e. outside the container).
 ---
 
 ## Planned / known issues
-
-### Web application
-
-- **Flask app factory pattern** — the app is currently a module-level global.
-  Refactor to a `create_app()` factory in `vaultkeeper/web/__init__.py` to
-  support proper test isolation and app configuration.
-- **Production server** — Flask's built-in server is not suitable for
-  production. Replace `app.run()` with [Gunicorn](https://gunicorn.org/) as
-  the container entrypoint.
 
 ### Observability
 

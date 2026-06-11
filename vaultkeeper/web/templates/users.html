@@ -17,14 +17,14 @@
       {% for username in users %}
       <tr>
         <td>
-          <a href="{{ url_for('user_detail', username=username) }}" class="text-decoration-none">
+          <a href="{{ url_for('main.user_detail', username=username) }}" class="text-decoration-none">
             {{ username }}
           </a>
         </td>
         <td class="text-end">
-          <a href="{{ url_for('user_detail', username=username) }}"
+          <a href="{{ url_for('main.user_detail', username=username) }}"
              class="btn btn-sm btn-outline-secondary me-1">View</a>
-          <form method="post" action="{{ url_for('user_delete', username=username) }}"
+          <form method="post" action="{{ url_for('main.user_delete', username=username) }}"
                 class="d-inline"
                 onsubmit="return confirm('Delete user {{ username }}? This cannot be undone.')">
             <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
