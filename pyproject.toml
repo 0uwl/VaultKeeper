@@ -16,7 +16,7 @@ dependencies = [
 
 [project.scripts]
 cli              = "vaultkeeper.cli:cli"
-web  = "vaultkeeper.web.app:main"
+web  = "vaultkeeper.web.app:run_dev"
 
 [project.optional-dependencies]
 dev = [

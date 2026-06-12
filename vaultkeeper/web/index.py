@@ -9,9 +9,10 @@ from flask import (
     request,
     session,
     url_for,
+    current_app,
 )
 
-from vaultkeeper.client import CouchDB, CouchDBError, ValidationError
+from vaultkeeper.client import CouchDB, CouchDBError, ValidationError, db_name_to_vault_parts
 
 index = Blueprint("index", __name__)
 
@@ -75,8 +76,10 @@ def login():
                 session["logged_in"] = True
                 return redirect(url_for("index.dashboard"))
             except CouchDBError as e:
+                current_app.logger.error(f"Error when logging in: {str(e)}")
                 flash(str(e), "error")
         else:
+            current_app.logger.error(f"Error when logging in: Invalid credentials for user '{username}'")
             flash("Invalid credentials.", "error")
 
     return render_template("login.html")
@@ -101,6 +104,7 @@ def dashboard():
         user_count = len(client.list_users())
         vault_count = len(client.list_all_vaults())
     except CouchDBError as e:
+        current_app.logger.error(f"Error fetching CouchDB info: {str(e)}")
         flash(str(e), "error")
         server_info, user_count, vault_count = None, 0, 0
     return render_template(
@@ -127,12 +131,14 @@ def users():
             client.create_user(username, password)
             flash(f"User '{username}' created.", "success")
         except (CouchDBError, ValidationError) as e:
+            current_app.logger.error(f"Error when creating user '{username}': {str(e)}")
             flash(str(e), "error")
         return redirect(url_for("index.users"))
 
     try:
         user_list = client.list_users()
     except CouchDBError as e:
+        current_app.logger.error(f"Error when listing users: {str(e)}")
         flash(str(e), "error")
         user_list = []
     return render_template("users.html", users=user_list)
@@ -144,10 +150,12 @@ def user_detail(username):
     client = _get_client()
     try:
         if not client.user_exists(username):
+            current_app.logger.error(f"User '{username}' not found")
             flash(f"User '{username}' not found.", "error")
             return redirect(url_for("index.users"))
         vaults = client.list_vaults_for_user(username)
     except CouchDBError as e:
+        current_app.logger.error(f"Error when listing vaults for '{username}': {str(e)}")
         flash(str(e), "error")
         vaults = []
     return render_template("user_detail.html", username=username, vaults=vaults)
@@ -161,6 +169,7 @@ def user_delete(username):
         client.delete_user(username)
         flash(f"User '{username}' deleted.", "success")
     except CouchDBError as e:
+        current_app.logger.error(f"Error when deleting user '{username}': {str(e)}")
         flash(str(e), "error")
     return redirect(url_for("index.users"))
 
@@ -173,6 +182,7 @@ def user_passwd(username):
         client.change_password(username, request.form.get("password", ""))
         flash(f"Password updated for '{username}'.", "success")
     except CouchDBError as e:
+        current_app.logger.error(f"Error when changing password for user '{username}': {str(e)}")
         flash(str(e), "error")
     return redirect(url_for("index.user_detail", username=username))
 
@@ -194,12 +204,14 @@ def vaults():
             flash(f"Vault '{db_name}' created.", "success")
             return redirect(url_for("index.vault_detail", db_name=db_name))
         except (CouchDBError, ValidationError) as e:
+            current_app.logger.error(f"Error when creating vault '{vault_name}': {str(e)}")
             flash(str(e), "error")
             return redirect(url_for("index.vaults"))
 
     try:
         vault_list = client.list_all_vaults()
     except CouchDBError as e:
+        current_app.logger.error(f"Error listing vaults: {str(e)}")
         flash(str(e), "error")
         vault_list = []
     return render_template("vaults.html", vaults=vault_list)
@@ -210,8 +222,15 @@ def vaults():
 def vault_detail(db_name):
     client = _get_client()
     try:
+        _, vault_name = db_name_to_vault_parts(db_name)
+    except ValidationError as e:
+        current_app.logger.error(f"Error parsing database name '{db_name}': {str(e)}")
+        flash(str(e), "error")
+        return redirect(url_for("index.vaults"))
+    try:
         info = client.vault_info(db_name)
     except CouchDBError as e:
+        current_app.logger.error(f"Error fetching details for vault '{vault_name}': {str(e)}")
         flash(str(e), "error")
         return redirect(url_for("index.vaults"))
     return render_template("vault_detail.html", vault=info)
@@ -222,9 +241,16 @@ def vault_detail(db_name):
 def vault_compact(db_name):
     client = _get_client()
     try:
+        _, vault_name = db_name_to_vault_parts(db_name)
+    except ValidationError as e:
+        current_app.logger.error(f"Error parsing database name '{db_name}': {str(e)}")
+        flash(str(e), "error")
+        return redirect(url_for("index.vaults"))
+    try:
         client.compact_vault(db_name)
-        flash(f"Compaction started for '{db_name}'.", "success")
+        flash(f"Compaction started for '{vault_name}'.", "success")
     except CouchDBError as e:
+        current_app.logger.error(f"Error trying to compact vault '{vault_name}': {str(e)}")
         flash(str(e), "error")
     return redirect(url_for("index.vault_detail", db_name=db_name))
 
@@ -234,9 +260,16 @@ def vault_compact(db_name):
 def vault_delete(db_name):
     client = _get_client()
     try:
+        _, vault_name = db_name_to_vault_parts(db_name)
+    except ValidationError as e:
+        current_app.logger.error(f"Error parsing database name '{db_name}': {str(e)}")
+        flash(str(e), "error")
+        return redirect(url_for("index.vaults"))
+    try:
         client.delete_vault(db_name)
-        flash(f"Vault '{db_name}' deleted.", "success")
+        flash(f"Vault '{vault_name}' deleted.", "success")
     except CouchDBError as e:
+        current_app.logger.error(f"Error when trying to delete vault '{vault_name}': {str(e)}")
         flash(str(e), "error")
     return redirect(url_for("index.vaults"))
 
@@ -245,12 +278,20 @@ def vault_delete(db_name):
 @login_required
 def vault_setup_uri(db_name):
     client = _get_client()
-    if not client.db_exists(db_name):
-        flash(f"Vault '{db_name}' not found.", "error")
+    try:
+        if not client.db_exists(db_name):
+            flash(f"Vault '{db_name}' not found.", "error")
+            return redirect(url_for("index.vaults"))
+    except CouchDBError as e:
+        current_app.logger.error(f"Error: {str(e)}")
+        flash(str(e), "error")
+        
+    try:
+        username, vault_name = db_name_to_vault_parts(db_name)
+    except ValidationError as e:
+        current_app.logger.error(f"Error parsing database name '{db_name}': {str(e)}")
+        flash(str(e), "error")
         return redirect(url_for("index.vaults"))
-
-    parts = db_name.split("_", 2)
-    username = parts[1] if len(parts) >= 2 else ""
 
     result = None
     if request.method == "POST":
@@ -263,6 +304,7 @@ def vault_setup_uri(db_name):
                 uri_passphrase=request.form.get("uri_passphrase") or None,
             )
         except CouchDBError as e:
+            current_app.logger.error(f"Error when generating Setup URI for '{vault_name}': {str(e)}")
             flash(str(e), "error")
 
     return render_template("setup_uri.html", db_name=db_name, username=username, result=result)
@@ -289,6 +331,7 @@ def provision():
             result["username"] = username
             flash(f"Provisioned '{username}' with vault '{db_name}'.", "success")
         except (CouchDBError, ValidationError) as e:
+            current_app.logger.error(f"Error when provisioning new vault '{vault_name}' for user '{username}': {str(e)}")
             flash(str(e), "error")
 
     return render_template("provision.html", result=result)

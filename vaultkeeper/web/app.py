@@ -10,38 +10,48 @@ Environment variables:
   FLASK_SECRET_KEY      - set a stable value; sessions reset on restart if unset
   VAULTKEEPER_WEB_PORT  - port for the web server (default: 5985)
 
-Note: when running under Gunicorn, main() is not called, so server init does not
-run automatically. Run `cli server init` before starting Gunicorn, or rely on the
-compose.yml healthcheck ordering which already handles this.
 """
 
 import os
-import sys
 
-from flask import Flask
+from flask import Flask, current_app
 
 from vaultkeeper.client import CouchDB, CouchDBError
+from vaultkeeper.logger import get_logger
 
 
 def create_app() -> Flask:
     app = Flask(__name__)
     app.secret_key = os.environ.get("FLASK_SECRET_KEY") or os.urandom(24)
 
+    logger = get_logger(__name__)
+    app.logger.handlers = logger.handlers
+    app.logger.setLevel(logger.level)
+    app.logger.propagate = False  # prevent double-logging to root
+
     from vaultkeeper.web.index import index
     app.register_blueprint(index)
+    
+    try:
+        with app.app_context():
+            apply_couchdb_config()
+    except CouchDBError as e:
+        app.logger.error(f"Warning: server init failed: {e}")
 
     return app
 
 
-def main():
+def run_dev():
     app = create_app()
     port = int(os.environ.get("VAULTKEEPER_WEB_PORT", 5985))
-    try:
-        CouchDB().server_init()
-    except CouchDBError as e:
-        print(f"Warning: server init failed: {e}", file=sys.stderr)
     app.run(host="0.0.0.0", port=port, debug=False)
 
 
+def apply_couchdb_config():
+    couchdb = CouchDB()
+    current_app.logger.info(f"Sending server configuration to '{couchdb.host}'")
+    couchdb.server_init()
+
+
 if __name__ == "__main__":
-    main()
+    run_dev()
