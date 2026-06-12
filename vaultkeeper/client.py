@@ -19,10 +19,13 @@ import subprocess
 import requests
 from requests.auth import HTTPBasicAuth
 
+from vaultkeeper.logger import get_logger
+
 _DB_NAME_RE = re.compile(r"^[a-z][a-z0-9_$()+\-/]*$")
 _VAULT_NAME_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 _SETUP_URI_SCRIPT_DEFAULT = "/scripts/generate_setupuri.ts"
 
+LOGGER = get_logger(__name__)
 
 class CouchDBError(Exception):
     """A CouchDB operation failed."""
@@ -38,6 +41,18 @@ class ValidationError(CouchDBError):
 
 def vault_name_to_db_name(username: str, vault_name: str) -> str:
     return f"vault_{username}_{vault_name}"
+
+
+def db_name_to_vault_parts(db_name: str) -> tuple[str, str]:
+    """Parse a vault db name into (username, vault_name). Raises ValidationError if not a valid vault db name."""
+    prefix = "vault_"
+    if not db_name.startswith(prefix):
+        raise ValidationError(f"'{db_name}' is not a vault database name (must start with 'vault_')")
+    rest = db_name[len(prefix):]
+    parts = rest.split("_", 1)
+    if len(parts) != 2 or not parts[0] or not parts[1]:
+        raise ValidationError(f"'{db_name}' is not a valid vault database name")
+    return parts[0], parts[1]
 
 
 def validate_vault_name(vault_name: str) -> None:
@@ -176,6 +191,7 @@ class CouchDB:
         )
         if r.status_code not in (201, 202):
             raise CouchDBError(f"Failed to create user '{username}': {r.status_code} {r.text}")
+        LOGGER.info(f"Created new user '{username}'")
 
     def delete_user(self, username: str) -> None:
         if not self.user_exists(username):
@@ -188,6 +204,7 @@ class CouchDB:
         )
         if r.status_code != 200:
             raise CouchDBError(f"Failed to delete user '{username}': {r.status_code} {r.text}")
+        LOGGER.info(f"Deleted user '{username}'")
 
     def change_password(self, username: str, new_password: str) -> None:
         if not self.user_exists(username):
@@ -201,6 +218,7 @@ class CouchDB:
         )
         if r.status_code not in (200, 201):
             raise CouchDBError(f"Failed to update password for '{username}': {r.status_code} {r.text}")
+        LOGGER.info(f"Password for user '{username}' was changed")
 
     # -----------------------------------------------------------------------
     # Vaults
@@ -253,7 +271,7 @@ class CouchDB:
         r = self._session.put(self._url(db, "_security"), data=json.dumps(security))
         if r.status_code != 200:
             raise CouchDBError(f"Failed to set security on '{db}': {r.status_code} {r.text}")
-
+        LOGGER.info(f"Created vault '{vault_name}' for user '{username}'")
         return db
 
     def delete_vault(self, db_name: str) -> None:
@@ -262,6 +280,9 @@ class CouchDB:
         r = self._session.delete(self._url(db_name))
         if r.status_code != 200:
             raise CouchDBError(f"Failed to delete database '{db_name}': {r.status_code} {r.text}")
+        username, vault_name = db_name_to_vault_parts(db_name)
+        LOGGER.info(f"Deleted vault '{vault_name}' owned by '{username}'")
+        
 
     def vault_info(self, db_name: str) -> dict:
         """Return a dict of size/doc stats for a vault database."""
@@ -288,6 +309,8 @@ class CouchDB:
         r = self._session.post(self._url(db_name, "_compact"))
         if r.status_code != 202:
             raise CouchDBError(f"Failed to compact '{db_name}': {r.status_code} {r.text}")
+        username, vault_name = db_name_to_vault_parts(db_name)
+        LOGGER.info(f"Vault '{vault_name}' was compacted by '{username}'")
 
     # -----------------------------------------------------------------------
     # Setup URI
@@ -359,7 +382,10 @@ class CouchDB:
                 if "passphrase of Setup-URI is:" in line:
                     uri_passphrase = line.split(":", 1)[-1].strip()
                     break
-
+        
+        _, vault_name = db_name_to_vault_parts(db_name)
+        LOGGER.info(f"User '{username}' generated a Setup URI for vault '{vault_name}'")
+        
         return {
             "uri":                      uri,
             "passphrase":               passphrase,
