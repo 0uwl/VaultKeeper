@@ -313,9 +313,3 @@ automatically skipped when Deno is not on PATH (i.e. outside the container).
 - **Build a proper frontend** - All static files are currently served directly by Flask. It works fine
   and is made pretty using Bootstrap but it could be better. Using an established frontend framework
   would make development of the frontend easier in the future.
-
-### Observability
-
-- **Structured logging** - no logging is in place beyond Flask's default
-  request log. Add a proper logging setup with configurable levels
-  (`DEBUG` → `CRITICAL`) via a `LOG_LEVEL` environment variable.
