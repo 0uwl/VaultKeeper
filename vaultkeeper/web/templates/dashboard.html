@@ -12,7 +12,7 @@
       <div class="card-body">
         <div class="display-5 fw-bold">{{ user_count }}</div>
         <div class="text-secondary">Users</div>
-        <a href="{{ url_for('users') }}" class="stretched-link text-decoration-none">
+        <a href="{{ url_for('index.users') }}" class="stretched-link text-decoration-none">
           <small>Manage users →</small>
         </a>
       </div>
@@ -23,7 +23,7 @@
       <div class="card-body">
         <div class="display-5 fw-bold">{{ vault_count }}</div>
         <div class="text-secondary">Vaults</div>
-        <a href="{{ url_for('vaults') }}" class="stretched-link text-decoration-none">
+        <a href="{{ url_for('index.vaults') }}" class="stretched-link text-decoration-none">
           <small>Manage vaults →</small>
         </a>
       </div>
@@ -48,8 +48,8 @@
 
 <h2 class="h5 mb-3">Quick actions</h2>
 <div class="d-flex flex-wrap gap-2">
-  <a href="{{ url_for('provision') }}" class="btn btn-primary">Provision new user</a>
-  <a href="{{ url_for('users') }}" class="btn btn-outline-secondary">Manage users</a>
-  <a href="{{ url_for('vaults') }}" class="btn btn-outline-secondary">Manage vaults</a>
+  <a href="{{ url_for('index.provision') }}" class="btn btn-primary">Provision new user</a>
+  <a href="{{ url_for('index.users') }}" class="btn btn-outline-secondary">Manage users</a>
+  <a href="{{ url_for('index.vaults') }}" class="btn btn-outline-secondary">Manage vaults</a>
 </div>
 {% endblock %}

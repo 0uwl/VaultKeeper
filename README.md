@@ -7,7 +7,7 @@ Instead of manually configuring databases, security documents, and setup URIs, V
 browser UI and a CLI that handle everything - getting a new user from zero to a syncing Obsidian vault
 in minutes, without touching config files or curl commands.
 
-**Design principles:**
+## Design principles
 
 - **Vault-management-first.** The vault naming scheme, setup URI flow, and security model are all
   designed around LiveSync's expectations, not generic CouchDB usage.
@@ -20,6 +20,16 @@ in minutes, without touching config files or curl commands.
 
 ---
 
+## Disclaimer and the goal
+
+VaultKeeper is still under heavy development and not a finished product. Right now, this project is realistically only
+useful for single-user admins. Although it technically has the ability to create users with their isolated CouchDB databases, it is
+still the admin which creates these users, including their passwords, not exactly ideal for a real multi-user application.
+
+The goal for this project is to become a proper multi-user tool where admins can invite end-users who can then send the admin requests to create vault databases, or perhaps have a set limit of how many vault databases they are allowed to create.
+Admins will have one dashboard that looks very similar to the dashboard today and end-users will have a slimmer dashboard which shows only their vault databases, where they have the ability to request new ones.
+
+
 ## Repository structure
 
 ```
@@ -29,10 +39,11 @@ in minutes, without touching config files or curl commands.
 │   ├── client.py                   # Core CouchDB module - shared by CLI and web app
 │   ├── cli.py                      # Click-based CLI (entry point: couchdb-cli)
 │   └── web/
-│       ├── __init__.py
-│       ├── app.py                  # Flask web application (entry point: vaultkeeper-web)
 │       ├── templates/              # Jinja2 HTML templates (Bootstrap 5)
 │       └── static/                 # CSS overrides
+│       ├── __init__.py
+│       ├── app.py                  # Flask app factory (create_app) + main() entry point
+│       ├── index.py                # Blueprint "index"
 ├── tests/
 │   ├── conftest.py
 │   ├── test_server.py
@@ -158,7 +169,7 @@ The CLI always connects as the server admin.
 
 ---
 
-## Web application (`vaultkeeper-web`)
+## Web application (`web`)
 
 A browser-based management UI that replaces the need for `docker exec` and CLI
 usage for day-to-day operations. Runs on port **5985** alongside CouchDB on
@@ -170,7 +181,7 @@ port **5984**.
   logic via imports from `vaultkeeper.client`
 - **Frontend:** Server-rendered Jinja2 templates;
   [Bootstrap 5](https://getbootstrap.com/) via CDN, dark theme
-- **Port:** Flask runs on port **5985** - CouchDB's port 5984 is untouched
+- **Port:** Flask runs on port **5985**
 - **Auth:** Session-based login using `COUCHDB_USER` / `COUCHDB_PASSWORD`;
   the web UI is protected behind a login page; the Flask app authenticates to
   CouchDB as the server admin
@@ -208,15 +219,7 @@ CouchDB runs on its own container (typically port 5984). Users who want both
 behind a single HTTPS endpoint should place their own reverse proxy in front:
 
 - `/_*` and `/` → CouchDB at port 5984
-- `/manage` (or similar prefix) → VaultKeeper at port 5985
-
----
-
-## Publishing
-
-**GitHub Container Registry:** `ghcr.io/0uwl/vaultkeeper`
-
-**Versioning:** Semantic versioning. Example: `1.0.0`.
+- `/vaultkeeper` (or similar prefix) → VaultKeeper at port 5985
 
 ---
 
@@ -224,7 +227,7 @@ behind a single HTTPS endpoint should place their own reverse proxy in front:
 
 A `compose.yml` is included that runs both services together using the official
 `couchdb:3.3` image. VaultKeeper automatically applies the required LiveSync
-CouchDB configuration on startup — no manual CouchDB setup is needed.
+CouchDB configuration on startup - no manual CouchDB setup is needed.
 
 ```bash
 # Set your credentials - COUCHDB_PUBLIC_URL is the external URL LiveSync clients will use
@@ -261,11 +264,27 @@ docker build -t vaultkeeper .
 Defined in `pyproject.toml`. To install for local development:
 
 ```bash
-pip install -e .           # installs cli and vaultkeeper-web scripts
-pip install -e ".[dev]"    # also installs pytest and testcontainers
+pip install -e .             # installs cli and web scripts
+pip install -e ".[dev]"      # also installs pytest and testcontainers
+pip install -e ".[serve]"    # also installs gunicorn
 ```
 
 Core dependencies: `click`, `requests`, `flask`
+
+### Running with Gunicorn
+
+```bash
+pip install -e ".[serve]"
+cli server init
+gunicorn "vaultkeeper.web.app:create_app()"
+```
+
+`gunicorn.conf.py` in the project root is picked up automatically. It binds to
+`$VAULTKEEPER_WEB_PORT` (default 5985) and defaults to 2 workers; override
+with `$WEB_CONCURRENCY`. Access and error logs go to stdout/stderr.
+
+In the container, `docker-entrypoint.sh` runs `cli server init` then starts
+Gunicorn automatically - no manual init step is needed.
 
 ### Testing
 
@@ -285,17 +304,18 @@ automatically skipped when Deno is not on PATH (i.e. outside the container).
 
 ## Planned / known issues
 
-### Web application
+### Web interface
 
-- **Flask app factory pattern** — the app is currently a module-level global.
-  Refactor to a `create_app()` factory in `vaultkeeper/web/__init__.py` to
-  support proper test isolation and app configuration.
-- **Production server** — Flask's built-in server is not suitable for
-  production. Replace `app.run()` with [Gunicorn](https://gunicorn.org/) as
-  the container entrypoint.
+- **Separate admin and end-user dashboard** - currently, only the admin can log into VaultKeeper
+  to manage vaults. In the future, end-users should have their own dashboards for the vaults they own
+- **OIDC authentication** - admins should be able to configure OIDC providers that they and 
+  end-users can use to login.
+- **Build a proper frontend** - All static files are currently served directly by Flask. It works fine
+  and is made pretty using Bootstrap but it could be better. Using an established frontend framework
+  would make development of the frontend easier in the future.
 
 ### Observability
 
-- **Structured logging** — no logging is in place beyond Flask's default
+- **Structured logging** - no logging is in place beyond Flask's default
   request log. Add a proper logging setup with configurable levels
   (`DEBUG` → `CRITICAL`) via a `LOG_LEVEL` environment variable.

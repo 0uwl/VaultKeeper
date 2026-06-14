@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "vaultkeeper"
-version = "0.1.0"
+version = "0.1.0-beta"
 description = "Self-hosted Obsidian LiveSync backend"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -16,12 +16,15 @@ dependencies = [
 
 [project.scripts]
 cli              = "vaultkeeper.cli:cli"
-vaultkeeper-web  = "vaultkeeper.web.app:main"
+web  = "vaultkeeper.web.app:run_dev"
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",
     "testcontainers>=4.0",
+]
+serve = [
+    "gunicorn>=21.0",
 ]
 
 [tool.hatch.build.targets.wheel]
