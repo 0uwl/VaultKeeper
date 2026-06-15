@@ -7,7 +7,7 @@ Gunicorn:                   gunicorn "vaultkeeper.web.app:create_app()"  (picks 
 
 Environment variables:
   COUCHDB_HOST, COUCHDB_USER, COUCHDB_PASSWORD, COUCHDB_PUBLIC_URL
-  FLASK_SECRET_KEY      - set a stable value; sessions reset on restart if unset
+  FLASK_SECRET_KEY      - required; signs session cookies; generate with: openssl rand -hex 32
   VAULTKEEPER_WEB_PORT  - port for the web server (default: 5985)
 
 """
@@ -22,7 +22,15 @@ from vaultkeeper.logger import get_logger
 
 def create_app() -> Flask:
     app = Flask(__name__)
-    app.secret_key = os.environ.get("FLASK_SECRET_KEY") or os.urandom(24)
+    secret_key = os.environ.get("FLASK_SECRET_KEY")
+    if not secret_key:
+        raise RuntimeError(
+            "FLASK_SECRET_KEY is not set. "
+            "Generate one with: python -c \"import secrets; print(secrets.token_hex(32))\" "
+            "and set it as an environment variable. "
+            "Without it, sessions are invalidated on every restart and across Gunicorn workers."
+        )
+    app.secret_key = secret_key
 
     logger = get_logger(__name__)
     app.logger.handlers = logger.handlers

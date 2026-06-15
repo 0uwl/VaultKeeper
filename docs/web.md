@@ -13,6 +13,22 @@ for day-to-day operations. Runs on port **5985** alongside CouchDB on port **598
 - **Auth:** Session-based login using `COUCHDB_USER` / `COUCHDB_PASSWORD`; the web UI is
   protected behind a login page; the Flask app authenticates to CouchDB as the server admin
 
+## Environment variables
+
+| Variable | Required | Description |
+|---|---|---|
+| `FLASK_SECRET_KEY` | **Yes** | Signs session cookies. Must be stable and shared across all workers. Generate with `openssl rand -hex 32`. |
+| `COUCHDB_HOST` | No | CouchDB base URL (default: `http://localhost:5984`) |
+| `COUCHDB_USER` | No | CouchDB admin username |
+| `COUCHDB_PASSWORD` | No | CouchDB admin password |
+| `COUCHDB_PUBLIC_URL` | No | External CouchDB URL for setup URIs (falls back to `COUCHDB_HOST`) |
+| `VAULTKEEPER_WEB_PORT` | No | Web server port (default: `5985`) |
+
+`FLASK_SECRET_KEY` is required - the app raises an error at startup if it is not set.
+Using a random fallback would silently break sessions across Gunicorn workers (each worker
+would sign cookies with a different key, so requests routed to a different worker than the
+one that created the session would reject it and redirect to the login page).
+
 ## Routes
 
 ```

@@ -49,6 +49,7 @@ Core dependencies: `click`, `requests`, `flask`
 ```bash
 pip install -e ".[serve]"
 cli server init
+export FLASK_SECRET_KEY=$(openssl rand -hex 32)
 gunicorn "vaultkeeper.web.app:create_app()"
 ```
 
