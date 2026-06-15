@@ -20,21 +20,6 @@ syncing Obsidian vault in minutes, without touching config files or curl command
 
 ---
 
-## Disclaimer and the goal
-
-VaultKeeper is still under heavy development and not a finished product. Right now, this
-project is realistically only useful for single-user admins. Although it technically has the
-ability to create users with their isolated CouchDB databases, it is still the admin who
-creates these users, including their passwords - not exactly ideal for a real multi-user
-application.
-
-The goal is to become a proper multi-user tool where admins can invite end-users who can
-send requests to create vault databases, or have a set limit on how many they can create.
-Admins will have one dashboard similar to today's and end-users will have a slimmer view
-showing only their own vaults.
-
----
-
 ## Quick start
 
 A `compose.yml` is included that runs both services together using the official
@@ -43,7 +28,7 @@ configuration on startup - no manual CouchDB setup is needed.
 
 An `.env.example` is also available to quickly setup the required environment variables. 
 Copy it, place it next to your `compose.yml` and rename it to `.env` then edit the 
-`COUCHDB_PASSWORD` variable.
+`COUCHDB_PASSWORD` and `SECRET_KEY` variable.
 
 > NOTE: `.env.example` contains an insecure admin password. You _must_ set your own strong password
 before exposing the application to the public internet
