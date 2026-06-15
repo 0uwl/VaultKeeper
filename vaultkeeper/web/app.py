@@ -7,14 +7,16 @@ Gunicorn:                   gunicorn "vaultkeeper.web.app:create_app()"  (picks 
 
 Environment variables:
   COUCHDB_HOST, COUCHDB_USER, COUCHDB_PASSWORD, COUCHDB_PUBLIC_URL
-  FLASK_SECRET_KEY      - set a stable value; sessions reset on restart if unset
+  SECRET_KEY            - required; signs session cookies; generate with: openssl rand -hex 32
   VAULTKEEPER_WEB_PORT  - port for the web server (default: 5985)
 
 """
 
 import os
+import sys
 
 from flask import Flask, current_app
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from vaultkeeper.client import CouchDB, CouchDBError
 from vaultkeeper.logger import get_logger
@@ -22,7 +24,11 @@ from vaultkeeper.logger import get_logger
 
 def create_app() -> Flask:
     app = Flask(__name__)
-    app.secret_key = os.environ.get("FLASK_SECRET_KEY") or os.urandom(24)
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+    secret_key = os.environ.get("SECRET_KEY")
+    if not secret_key:
+        sys.exit("Error: SECRET_KEY is not set. Generate one with: openssl rand -hex 32")
+    app.secret_key = secret_key
 
     logger = get_logger(__name__)
     app.logger.handlers = logger.handlers

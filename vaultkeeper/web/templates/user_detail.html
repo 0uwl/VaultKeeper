@@ -4,7 +4,11 @@
 {% block content %}
 <div class="d-flex align-items-center gap-3 mb-4">
   <h1 class="h3 mb-0">{{ username }}</h1>
+  {% if session.is_admin %}
   <a href="{{ url_for('index.users') }}" class="btn btn-sm btn-outline-secondary">← Users</a>
+  {% else %}
+  <a href="{{ url_for('index.dashboard') }}" class="btn btn-sm btn-outline-secondary">← Dashboard</a>
+  {% endif %}
 </div>
 
 <h2 class="h5 mb-3">Vaults</h2>
@@ -13,22 +17,23 @@
   <table class="table table-hover align-middle">
     <thead class="table-dark">
       <tr>
-        <th>Database</th>
+        <th>Vault</th>
         <th class="text-end">Actions</th>
       </tr>
     </thead>
     <tbody>
-      {% for db in vaults %}
+      {% for vault in vaults %}
       <tr>
         <td>
-          <a href="{{ url_for('index.vault_detail', db_name=db) }}" class="text-decoration-none">
-            {{ db }}
+          <a href="{{ url_for('index.vault_detail', db_name=vault.db_name) }}" class="text-decoration-none fw-semibold">
+            {{ vault.vault_name }}
           </a>
+          <div class="small text-secondary font-monospace">{{ vault.db_name }}</div>
         </td>
         <td class="text-end">
-          <a href="{{ url_for('index.vault_detail', db_name=db) }}"
+          <a href="{{ url_for('index.vault_detail', db_name=vault.db_name) }}"
              class="btn btn-sm btn-outline-secondary me-1">View</a>
-          <a href="{{ url_for('index.vault_setup_uri', db_name=db) }}"
+          <a href="{{ url_for('index.vault_setup_uri', db_name=vault.db_name) }}"
              class="btn btn-sm btn-outline-primary">Setup URI</a>
         </td>
       </tr>
@@ -56,17 +61,52 @@
     </div>
   </div>
 
+  {% if session.is_admin %}
   <div class="col-md-6">
-    <div class="card border-danger h-100">
-      <div class="card-header text-danger">Danger zone</div>
+    <div class="card h-100">
+      <div class="card-header">Vault limits</div>
       <div class="card-body">
-        <p class="text-secondary small">Deleting this user does not delete their vault databases.</p>
-        <form method="post" action="{{ url_for('index.user_delete', username=username) }}"
-              onsubmit="return confirm('Delete user {{ username }}? This cannot be undone.')">
-          <button type="submit" class="btn btn-danger">Delete user</button>
+        <p class="text-secondary small mb-3">
+          Leave a field blank to remove the limit.
+          Vault count is a hard limit; size is advisory (cannot interrupt an active sync).
+        </p>
+        <form method="post" action="{{ url_for('index.user_limits', username=username) }}">
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <label for="max_vaults" class="form-label">Max vaults</label>
+              <input id="max_vaults" name="max_vaults" type="number" min="0"
+                     class="form-control"
+                     value="{{ limits.max_vaults if limits and limits.max_vaults is not none else '' }}"
+                     placeholder="{{ 'server default: ' ~ server_settings.default_max_vaults if server_settings and server_settings.default_max_vaults is not none else 'unlimited' }}">
+            </div>
+            <div class="col-sm-6">
+              <label for="max_vault_size_bytes" class="form-label">Max size (bytes)</label>
+              <input id="max_vault_size_bytes" name="max_vault_size_bytes" type="number" min="0"
+                     class="form-control"
+                     value="{{ limits.max_vault_size_bytes if limits and limits.max_vault_size_bytes is not none else '' }}"
+                     placeholder="{{ 'server default: ' ~ server_settings.default_max_vault_size_bytes if server_settings and server_settings.default_max_vault_size_bytes is not none else 'unlimited' }}">
+            </div>
+            <div class="col-12">
+              <button type="submit" class="btn btn-primary">Save limits</button>
+            </div>
+          </div>
         </form>
       </div>
     </div>
   </div>
+  {% endif %}
 </div>
+
+{% if session.is_admin %}
+<div class="card border-danger mt-3">
+  <div class="card-header text-danger">Danger zone</div>
+  <div class="card-body">
+    <p class="text-secondary small">Deleting this user does not delete their vault databases.</p>
+    <form method="post" action="{{ url_for('index.user_delete', username=username) }}"
+          onsubmit="return confirm('Delete user {{ username }}? This cannot be undone.')">
+      <button type="submit" class="btn btn-danger">Delete user</button>
+    </form>
+  </div>
+</div>
+{% endif %}
 {% endblock %}

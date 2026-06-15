@@ -20,6 +20,8 @@ services:
     image: ghcr.io/0uwl/vaultkeeper:latest
     restart: unless-stopped
     container_name: vk-server
+    volumes:
+      - vk-logs:/var/log/vaultkeeper.log
     depends_on:
       vk-couchdb:
         condition: service_healthy
@@ -28,8 +30,10 @@ services:
       COUCHDB_USER: ${COUCHDB_USER:-admin}
       COUCHDB_PASSWORD: ${COUCHDB_PASSWORD:?COUCHDB_PASSWORD is required}
       COUCHDB_PUBLIC_URL: ${COUCHDB_PUBLIC_URL:-}
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY is required}
     ports:
       - "5985:5985"
 
 volumes:
+  vk-logs:
   couchdb-data:

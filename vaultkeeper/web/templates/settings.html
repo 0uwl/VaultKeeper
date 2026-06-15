@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Settings - VaultKeeper{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0">Server settings</h1>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header">Default vault limits</div>
+  <div class="card-body">
+    <p class="text-secondary small mb-3">
+      These defaults apply to all users who do not have a per-user limit set.
+      Leave a field blank for no limit. Per-user limits set on the user's page always take precedence.
+    </p>
+    <form method="post">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label for="default_max_vaults" class="form-label">Default max vaults per user</label>
+          <input id="default_max_vaults" name="default_max_vaults" type="number" min="0"
+                 class="form-control"
+                 value="{{ server_settings.default_max_vaults if server_settings.default_max_vaults is not none else '' }}"
+                 placeholder="unlimited">
+        </div>
+        <div class="col-md-4">
+          <label for="default_max_vault_size_bytes" class="form-label">Default max vault size (bytes)</label>
+          <input id="default_max_vault_size_bytes" name="default_max_vault_size_bytes" type="number" min="0"
+                 class="form-control"
+                 value="{{ server_settings.default_max_vault_size_bytes if server_settings.default_max_vault_size_bytes is not none else '' }}"
+                 placeholder="unlimited">
+          <div class="form-text">Advisory only - cannot interrupt an active sync.</div>
+        </div>
+        <div class="col-md-4 d-flex align-items-end">
+          <button type="submit" class="btn btn-primary w-100">Save settings</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

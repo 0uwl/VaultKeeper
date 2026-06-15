@@ -14,7 +14,7 @@ import sys
 
 import click
 
-from vaultkeeper.client import CouchDB, CouchDBError, ValidationError, vault_name_to_db_name
+from vaultkeeper.client import CouchDB, CouchDBError, ValidationError
 
 _CREDS_FILE = os.path.expanduser("~/.vaultkeeper/credentials")
 
@@ -276,10 +276,7 @@ def vault():
 @click.argument("username")
 @click.argument("vault_name")
 def vault_create(host, admin, password, username, vault_name):
-    """Create and secure a vault database for a user.
-
-    The database will be named vault_<username>_<vault_name>.
-    """
+    """Create and secure a vault database for a user."""
     client = _get_client(host, admin, password)
     try:
         _info(f"Creating vault '{vault_name}' for '{username}'...")
@@ -319,7 +316,7 @@ def vault_list(host, admin, password, username):
         click.echo(f"  No vaults found for '{username}'.")
         return
     for v in vaults:
-        click.echo(f"  • {v}")
+        click.echo(f"  • {v['vault_name']}  ({v['db_name']})")
 
 
 @vault.command("info")
@@ -372,8 +369,11 @@ def vault_setup_uri(host, admin, password, username, vault_name,
                     user_password, passphrase, uri_passphrase):
     """Generate a LiveSync setup URI for easy plugin configuration."""
     client = _get_client(host, admin, password)
-    db_name = vault_name_to_db_name(username, vault_name)
     try:
+        db_name = client.find_vault_by_name(username, vault_name)
+        if db_name is None:
+            _abort(f"Vault '{vault_name}' not found for user '{username}'.")
+            return
         result = client.generate_setup_uri(
             username, user_password, db_name, passphrase, uri_passphrase
         )
@@ -401,10 +401,7 @@ def vault_setup_uri(host, admin, password, username, vault_name,
               help="Passphrase to encrypt the setup URI (auto-generated if omitted).")
 def provision(host, admin, password, username, vault_name,
               user_password, passphrase, uri_passphrase):
-    """Create a user, their first vault, and a setup URI in one step.
-
-    The vault database will be named vault_<username>_<vault_name>.
-    """
+    """Create a user, their first vault, and a setup URI in one step."""
     client = _get_client(host, admin, password)
     try:
         _info(f"Creating user '{username}'...")
