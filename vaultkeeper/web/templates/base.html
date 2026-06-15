@@ -21,18 +21,26 @@
             <a class="nav-link {% if request.endpoint == 'index.dashboard' %}active{% endif %}"
                href="{{ url_for('index.dashboard') }}">Dashboard</a>
           </li>
+          {% if session.is_admin %}
           <li class="nav-item">
             <a class="nav-link {% if request.endpoint in ('index.users', 'index.user_detail') %}active{% endif %}"
                href="{{ url_for('index.users') }}">Users</a>
           </li>
+          {% endif %}
           <li class="nav-item">
             <a class="nav-link {% if request.endpoint in ('index.vaults', 'index.vault_detail', 'index.vault_setup_uri') %}active{% endif %}"
                href="{{ url_for('index.vaults') }}">Vaults</a>
           </li>
+          {% if session.is_admin %}
           <li class="nav-item">
             <a class="nav-link {% if request.endpoint == 'index.provision' %}active{% endif %}"
                href="{{ url_for('index.provision') }}">Provision</a>
           </li>
+          <li class="nav-item">
+            <a class="nav-link {% if request.endpoint in ('index.invitations', 'index.invitation_delete') %}active{% endif %}"
+               href="{{ url_for('index.invitations') }}">Invitations</a>
+          </li>
+          {% endif %}
         </ul>
         <form action="{{ url_for('index.logout') }}" method="post" class="d-flex">
           <button type="submit" class="btn btn-outline-secondary btn-sm">Logout</button>

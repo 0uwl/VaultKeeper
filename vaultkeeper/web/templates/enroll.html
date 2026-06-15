@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Enroll - VaultKeeper{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6 col-lg-5">
+    {% if invalid %}
+    <div class="card border-danger">
+      <div class="card-body text-center py-5">
+        <h1 class="h4 mb-3">Invalid invitation</h1>
+        <p class="text-secondary">This invitation link is invalid, has expired, or has already been used.</p>
+        <p class="text-secondary small">Contact your server administrator for a new invitation.</p>
+      </div>
+    </div>
+    {% else %}
+    <div class="card">
+      <div class="card-header">
+        <h1 class="h5 mb-0">Create your account</h1>
+      </div>
+      <div class="card-body">
+        <p class="text-secondary small mb-3">Choose a username and password for your VaultKeeper account.</p>
+        <form method="post">
+          <div class="mb-3">
+            <label for="username" class="form-label">Username</label>
+            <input id="username" name="username" type="text" class="form-control"
+                   placeholder="alice" autocomplete="username" required autofocus>
+            <div class="form-text">Lowercase letters, digits, and underscores only.</div>
+          </div>
+          <div class="mb-3">
+            <label for="password" class="form-label">Password</label>
+            <input id="password" name="password" type="password" class="form-control"
+                   autocomplete="new-password" required>
+          </div>
+          <div class="mb-4">
+            <label for="password_confirm" class="form-label">Confirm password</label>
+            <input id="password_confirm" name="password_confirm" type="password" class="form-control"
+                   autocomplete="new-password" required>
+          </div>
+          <button type="submit" class="btn btn-primary w-100">Create account</button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

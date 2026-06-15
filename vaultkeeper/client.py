@@ -9,6 +9,7 @@ Reads connection settings from environment variables:
   LIVESYNC_SETUP_URI_SCRIPT  Path to generate_setupuri.ts (default: /scripts/generate_setupuri.ts)
 """
 
+from datetime import datetime, timezone, timedelta
 import json
 import os
 import re
@@ -24,6 +25,7 @@ from vaultkeeper.logger import get_logger
 _DB_NAME_RE = re.compile(r"^[a-z][a-z0-9_$()+\-/]*$")
 _VAULT_NAME_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 _SETUP_URI_SCRIPT_DEFAULT = "/scripts/generate_setupuri.ts"
+CONFIG_DB = "vaultkeeper_config"
 
 LOGGER = get_logger(__name__)
 
@@ -161,6 +163,138 @@ class CouchDB:
         _put("cors",        "credentials",           "true")
         _put("cors",        "origins",               "app://obsidian.md,capacitor://localhost,http://localhost")
 
+        self.init_config_db()
+
+    # -----------------------------------------------------------------------
+    # Config DB
+    # -----------------------------------------------------------------------
+
+    def init_config_db(self) -> None:
+        """Create the vaultkeeper_config database if it does not already exist."""
+        r = self._session.put(self._url(CONFIG_DB))
+        if r.status_code not in (201, 412):  # 412 = already exists
+            raise CouchDBError(f"Failed to create config database: {r.status_code} {r.text}")
+
+    def authenticate_user(self, username: str, password: str) -> bool:
+        """Verify end-user credentials against CouchDB. Returns True if valid."""
+        try:
+            r = requests.post(
+                self._url("_session"),
+                data={"name": username, "password": password},
+            )
+            return r.status_code == 200
+        except requests.exceptions.RequestException:
+            return False
+
+    def create_invitation(self, expiry_hours: int = 72) -> str:
+        """Create a one-time enrollment invitation. Returns the token string."""
+        token = secrets.token_urlsafe(32)
+        now = datetime.now(timezone.utc)
+        doc = {
+            "_id": f"invitation:{token}",
+            "type": "invitation",
+            "token": token,
+            "created_at": now.isoformat(),
+            "expires_at": (now + timedelta(hours=expiry_hours)).isoformat(),
+            "used": False,
+            "used_by": None,
+            "used_at": None,
+        }
+        r = self._session.put(
+            self._url(CONFIG_DB, f"invitation:{token}"),
+            data=json.dumps(doc),
+        )
+        if r.status_code not in (201, 202):
+            raise CouchDBError(f"Failed to create invitation: {r.status_code} {r.text}")
+        return token
+
+    def get_invitation(self, token: str) -> dict | None:
+        """Return the invitation doc if valid (not used, not expired). Returns None otherwise."""
+        r = self._session.get(self._url(CONFIG_DB, f"invitation:{token}"))
+        if r.status_code != 200:
+            return None
+        doc = r.json()
+        if doc.get("used"):
+            return None
+        if datetime.now(timezone.utc) > datetime.fromisoformat(doc["expires_at"]):
+            return None
+        return doc
+
+    def consume_invitation(self, token: str, username: str) -> None:
+        """Mark an invitation as used."""
+        r = self._session.get(self._url(CONFIG_DB, f"invitation:{token}"))
+        if r.status_code != 200:
+            raise CouchDBError(f"Invitation not found.")
+        doc = r.json()
+        doc["used"] = True
+        doc["used_by"] = username
+        doc["used_at"] = datetime.now(timezone.utc).isoformat()
+        r = self._session.put(
+            self._url(CONFIG_DB, f"invitation:{token}"),
+            data=json.dumps(doc),
+        )
+        if r.status_code not in (200, 201, 202):
+            raise CouchDBError(f"Failed to consume invitation: {r.status_code} {r.text}")
+
+    def list_invitations(self) -> list[dict]:
+        """Return all invitation documents from the config database."""
+        r = self._session.get(
+            self._url(CONFIG_DB, "_all_docs"),
+            params={
+                "startkey": '"invitation:"',
+                "endkey": '"invitation;"',
+                "include_docs": "true",
+            },
+        )
+        if r.status_code != 200:
+            raise CouchDBError(f"Failed to list invitations: {r.status_code} {r.text}")
+        return [row["doc"] for row in r.json().get("rows", [])]
+
+    def delete_invitation(self, token: str) -> None:
+        """Delete an invitation document."""
+        r = self._session.get(self._url(CONFIG_DB, f"invitation:{token}"))
+        if r.status_code != 200:
+            raise CouchDBError("Invitation not found.")
+        rev = r.json()["_rev"]
+        r = self._session.delete(
+            self._url(CONFIG_DB, f"invitation:{token}"),
+            params={"rev": rev},
+        )
+        if r.status_code != 200:
+            raise CouchDBError(f"Failed to delete invitation: {r.status_code} {r.text}")
+
+    def get_user_limits(self, username: str) -> dict:
+        """Return per-user vault limits. Returns defaults if no limits doc exists."""
+        r = self._session.get(self._url(CONFIG_DB, f"user_limits:{username}"))
+        if r.status_code == 404:
+            return {"max_vaults": None, "max_vault_size_bytes": None}
+        if r.status_code != 200:
+            raise CouchDBError(f"Failed to get limits for '{username}': {r.status_code} {r.text}")
+        doc = r.json()
+        return {
+            "max_vaults": doc.get("max_vaults"),
+            "max_vault_size_bytes": doc.get("max_vault_size_bytes"),
+        }
+
+    def set_user_limits(
+        self,
+        username: str,
+        max_vaults: int | None,
+        max_vault_size_bytes: int | None,
+    ) -> None:
+        """Upsert per-user vault limits in the config database."""
+        doc_id = f"user_limits:{username}"
+        r = self._session.get(self._url(CONFIG_DB, doc_id))
+        if r.status_code == 200:
+            doc = r.json()
+        else:
+            doc = {"_id": doc_id, "type": "user_limits", "username": username}
+        doc["max_vaults"] = max_vaults
+        doc["max_vault_size_bytes"] = max_vault_size_bytes
+        r = self._session.put(self._url(CONFIG_DB, doc_id), data=json.dumps(doc))
+        if r.status_code not in (200, 201, 202):
+            raise CouchDBError(f"Failed to set limits for '{username}': {r.status_code} {r.text}")
+
     # -----------------------------------------------------------------------
     # Users
     # -----------------------------------------------------------------------
@@ -282,7 +416,7 @@ class CouchDB:
             raise CouchDBError(f"Failed to delete database '{db_name}': {r.status_code} {r.text}")
         username, vault_name = db_name_to_vault_parts(db_name)
         LOGGER.info(f"Deleted vault '{vault_name}' owned by '{username}'")
-        
+
 
     def vault_info(self, db_name: str) -> dict:
         """Return a dict of size/doc stats for a vault database."""
@@ -382,10 +516,10 @@ class CouchDB:
                 if "passphrase of Setup-URI is:" in line:
                     uri_passphrase = line.split(":", 1)[-1].strip()
                     break
-        
+
         _, vault_name = db_name_to_vault_parts(db_name)
         LOGGER.info(f"User '{username}' generated a Setup URI for vault '{vault_name}'")
-        
+
         return {
             "uri":                      uri,
             "passphrase":               passphrase,
