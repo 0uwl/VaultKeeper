@@ -20,6 +20,8 @@ services:
     image: ghcr.io/0uwl/vaultkeeper:latest
     restart: unless-stopped
     container_name: vk-server
+    volumes:
+      - vk-logs:/var/log/vaultkeeper.log
     depends_on:
       vk-couchdb:
         condition: service_healthy
@@ -32,4 +34,5 @@ services:
       - "5985:5985"
 
 volumes:
+  vk-logs:
   couchdb-data:

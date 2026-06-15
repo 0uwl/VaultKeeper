@@ -78,6 +78,7 @@ Connection settings are resolved in the following order for each command:
 | `COUCHDB_USER`              | Admin username                            | prompted                        |
 | `COUCHDB_PASSWORD`          | Admin password                            | prompted                        |
 | `COUCHDB_PUBLIC_URL`        | External URL embedded in setup URIs       | falls back to `COUCHDB_HOST`    |
+| `LOG_DIR`                   | The directory _inside the contianer_ where logs are stored | `/var/log/`    |
 
 ### Commands
 
