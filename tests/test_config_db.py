@@ -1,13 +1,13 @@
 """
-Tests for vaultkeeper_config database operations:
-invitation CRUD, user limits, and user authentication.
+Tests for vaultkeeper_data database operations:
+invitation CRUD, user limits, server settings, and user authentication.
 """
 
-import time
+import json
 
 import pytest
 
-from vaultkeeper.client import CouchDB, CouchDBError
+from vaultkeeper.client import CouchDB, CouchDBError, CONFIG_DB
 
 
 # ---------------------------------------------------------------------------
@@ -35,16 +35,14 @@ class TestInvitations:
         assert result is None
 
     def test_get_expired_invitation_returns_none(self, couchdb_client: CouchDB):
-        # Create with a very short expiry by manipulating the doc directly
-        token = couchdb_client.create_invitation(expiry_hours=24)
-        # Fetch and back-date expires_at
         from datetime import datetime, timezone, timedelta
-        r = couchdb_client._session.get(couchdb_client._url("vaultkeeper_config", f"invitation:{token}"))
+        token = couchdb_client.create_invitation(expiry_hours=24)
+        r = couchdb_client._session.get(couchdb_client._url(CONFIG_DB, f"invitation:{token}"))
         doc = r.json()
         doc["expires_at"] = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
         couchdb_client._session.put(
-            couchdb_client._url("vaultkeeper_config", f"invitation:{token}"),
-            data=__import__("json").dumps(doc),
+            couchdb_client._url(CONFIG_DB, f"invitation:{token}"),
+            data=json.dumps(doc),
         )
         result = couchdb_client.get_invitation(token)
         assert result is None
@@ -53,12 +51,9 @@ class TestInvitations:
     def test_consume_invitation(self, couchdb_client: CouchDB):
         token = couchdb_client.create_invitation()
         couchdb_client.consume_invitation(token, "alice")
-        # get_invitation should now return None (used)
-        result = couchdb_client.get_invitation(token)
-        assert result is None
-        # Verify the doc itself has the used fields
+        assert couchdb_client.get_invitation(token) is None
         r = couchdb_client._session.get(
-            couchdb_client._url("vaultkeeper_config", f"invitation:{token}")
+            couchdb_client._url(CONFIG_DB, f"invitation:{token}")
         )
         doc = r.json()
         assert doc["used"] is True
@@ -119,6 +114,69 @@ class TestUserLimits:
         limits = couchdb_client.get_user_limits(username)
         assert limits["max_vaults"] is None
         assert limits["max_vault_size_bytes"] is None
+
+
+# ---------------------------------------------------------------------------
+# Server settings tests
+# ---------------------------------------------------------------------------
+
+class TestServerSettings:
+    def test_get_settings_returns_defaults_when_unset(self, couchdb_client: CouchDB):
+        # Reset to no settings first
+        couchdb_client.set_server_settings(None, None)
+        settings = couchdb_client.get_server_settings()
+        assert settings["default_max_vaults"] is None
+        assert settings["default_max_vault_size_bytes"] is None
+
+    def test_set_and_get_settings(self, couchdb_client: CouchDB):
+        couchdb_client.set_server_settings(
+            default_max_vaults=10,
+            default_max_vault_size_bytes=5_000_000,
+        )
+        settings = couchdb_client.get_server_settings()
+        assert settings["default_max_vaults"] == 10
+        assert settings["default_max_vault_size_bytes"] == 5_000_000
+        # cleanup
+        couchdb_client.set_server_settings(None, None)
+
+    def test_update_settings(self, couchdb_client: CouchDB):
+        couchdb_client.set_server_settings(default_max_vaults=5, default_max_vault_size_bytes=None)
+        couchdb_client.set_server_settings(default_max_vaults=20, default_max_vault_size_bytes=None)
+        settings = couchdb_client.get_server_settings()
+        assert settings["default_max_vaults"] == 20
+        # cleanup
+        couchdb_client.set_server_settings(None, None)
+
+
+# ---------------------------------------------------------------------------
+# Effective limits tests (per-user overrides server defaults)
+# ---------------------------------------------------------------------------
+
+class TestEffectiveLimits:
+    def test_falls_back_to_server_default(self, couchdb_client: CouchDB, managed_user):
+        username, _ = managed_user
+        couchdb_client.set_server_settings(default_max_vaults=3, default_max_vault_size_bytes=None)
+        # No per-user limit set
+        effective = couchdb_client.get_effective_limits(username)
+        assert effective["max_vaults"] == 3
+        # cleanup
+        couchdb_client.set_server_settings(None, None)
+
+    def test_per_user_limit_overrides_server_default(self, couchdb_client: CouchDB, managed_user):
+        username, _ = managed_user
+        couchdb_client.set_server_settings(default_max_vaults=3, default_max_vault_size_bytes=None)
+        couchdb_client.set_user_limits(username, max_vaults=10, max_vault_size_bytes=None)
+        effective = couchdb_client.get_effective_limits(username)
+        assert effective["max_vaults"] == 10
+        # cleanup
+        couchdb_client.set_server_settings(None, None)
+
+    def test_no_limits_anywhere_returns_none(self, couchdb_client: CouchDB, managed_user):
+        username, _ = managed_user
+        couchdb_client.set_server_settings(None, None)
+        effective = couchdb_client.get_effective_limits(username)
+        assert effective["max_vaults"] is None
+        assert effective["max_vault_size_bytes"] is None
 
 
 # ---------------------------------------------------------------------------

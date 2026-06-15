@@ -25,7 +25,7 @@ from vaultkeeper.logger import get_logger
 _DB_NAME_RE = re.compile(r"^[a-z][a-z0-9_$()+\-/]*$")
 _VAULT_NAME_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 _SETUP_URI_SCRIPT_DEFAULT = "/scripts/generate_setupuri.ts"
-CONFIG_DB = "vaultkeeper_config"
+CONFIG_DB = "vaultkeeper_data"
 
 LOGGER = get_logger(__name__)
 
@@ -170,7 +170,7 @@ class CouchDB:
     # -----------------------------------------------------------------------
 
     def init_config_db(self) -> None:
-        """Create the vaultkeeper_config database if it does not already exist."""
+        """Create the vaultkeeper_data database if it does not already exist."""
         r = self._session.put(self._url(CONFIG_DB))
         if r.status_code not in (201, 412):  # 412 = already exists
             raise CouchDBError(f"Failed to create config database: {r.status_code} {r.text}")
@@ -282,7 +282,7 @@ class CouchDB:
         max_vaults: int | None,
         max_vault_size_bytes: int | None,
     ) -> None:
-        """Upsert per-user vault limits in the config database."""
+        """Upsert per-user vault limits in the data database."""
         doc_id = f"user_limits:{username}"
         r = self._session.get(self._url(CONFIG_DB, doc_id))
         if r.status_code == 200:
@@ -294,6 +294,47 @@ class CouchDB:
         r = self._session.put(self._url(CONFIG_DB, doc_id), data=json.dumps(doc))
         if r.status_code not in (200, 201, 202):
             raise CouchDBError(f"Failed to set limits for '{username}': {r.status_code} {r.text}")
+
+    def get_server_settings(self) -> dict:
+        """Return global default limits. Returns defaults if no settings doc exists."""
+        r = self._session.get(self._url(CONFIG_DB, "server_settings"))
+        if r.status_code == 404:
+            return {"default_max_vaults": None, "default_max_vault_size_bytes": None}
+        if r.status_code != 200:
+            raise CouchDBError(f"Failed to get server settings: {r.status_code} {r.text}")
+        doc = r.json()
+        return {
+            "default_max_vaults": doc.get("default_max_vaults"),
+            "default_max_vault_size_bytes": doc.get("default_max_vault_size_bytes"),
+        }
+
+    def set_server_settings(
+        self,
+        default_max_vaults: int | None,
+        default_max_vault_size_bytes: int | None,
+    ) -> None:
+        """Upsert the global default limits in the data database."""
+        r = self._session.get(self._url(CONFIG_DB, "server_settings"))
+        if r.status_code == 200:
+            doc = r.json()
+        else:
+            doc = {"_id": "server_settings", "type": "server_settings"}
+        doc["default_max_vaults"] = default_max_vaults
+        doc["default_max_vault_size_bytes"] = default_max_vault_size_bytes
+        r = self._session.put(self._url(CONFIG_DB, "server_settings"), data=json.dumps(doc))
+        if r.status_code not in (200, 201, 202):
+            raise CouchDBError(f"Failed to update server settings: {r.status_code} {r.text}")
+
+    def get_effective_limits(self, username: str) -> dict:
+        """Return vault limits for a user, falling back to server defaults."""
+        limits = self.get_user_limits(username)
+        settings = self.get_server_settings()
+        return {
+            "max_vaults": limits["max_vaults"] if limits["max_vaults"] is not None
+                          else settings["default_max_vaults"],
+            "max_vault_size_bytes": limits["max_vault_size_bytes"] if limits["max_vault_size_bytes"] is not None
+                                    else settings["default_max_vault_size_bytes"],
+        }
 
     # -----------------------------------------------------------------------
     # Users

@@ -13,7 +13,7 @@ from flask import (
     current_app,
 )
 
-from vaultkeeper.client import CouchDB, CouchDBError, ValidationError, db_name_to_vault_parts
+from vaultkeeper.client import CouchDB, CouchDBError, ValidationError, CONFIG_DB, db_name_to_vault_parts
 
 index = Blueprint("index", __name__)
 
@@ -298,13 +298,21 @@ def user_detail(username):
         vaults = []
 
     limits = None
+    server_settings = None
     if _is_admin():
         try:
             limits = client.get_user_limits(username)
+            server_settings = client.get_server_settings()
         except CouchDBError:
             pass
 
-    return render_template("user_detail.html", username=username, vaults=vaults, limits=limits)
+    return render_template(
+        "user_detail.html",
+        username=username,
+        vaults=vaults,
+        limits=limits,
+        server_settings=server_settings,
+    )
 
 
 @index.route("/users/<username>/delete", methods=["POST"])
@@ -370,7 +378,7 @@ def vaults():
         else:
             username = _current_user()
             try:
-                limits = client.get_user_limits(username)
+                limits = client.get_effective_limits(username)
                 max_vaults = limits["max_vaults"]
                 if max_vaults is not None:
                     current_count = len(client.list_vaults_for_user(username))
@@ -514,6 +522,38 @@ def vault_setup_uri(db_name):
             flash(str(e), "error")
 
     return render_template("setup_uri.html", db_name=db_name, username=username, result=result)
+
+
+# ---------------------------------------------------------------------------
+# Server settings (admin only)
+# ---------------------------------------------------------------------------
+
+@index.route("/settings", methods=["GET", "POST"])
+@admin_required
+def settings():
+    client = _get_client()
+
+    if request.method == "POST":
+        try:
+            max_vaults_raw = request.form.get("default_max_vaults", "").strip()
+            max_size_raw = request.form.get("default_max_vault_size_bytes", "").strip()
+            default_max_vaults = int(max_vaults_raw) if max_vaults_raw else None
+            default_max_vault_size_bytes = int(max_size_raw) if max_size_raw else None
+            client.set_server_settings(default_max_vaults, default_max_vault_size_bytes)
+            flash("Server settings updated.", "success")
+        except (CouchDBError, ValueError) as e:
+            current_app.logger.error(f"Error updating server settings: {str(e)}")
+            flash(str(e), "error")
+        return redirect(url_for("index.settings"))
+
+    try:
+        server_settings = client.get_server_settings()
+    except CouchDBError as e:
+        current_app.logger.error(f"Error fetching server settings: {str(e)}")
+        flash(str(e), "error")
+        server_settings = {"default_max_vaults": None, "default_max_vault_size_bytes": None}
+
+    return render_template("settings.html", server_settings=server_settings)
 
 
 # ---------------------------------------------------------------------------

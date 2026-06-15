@@ -45,7 +45,7 @@ The admin never sets a user's password. Instead:
 4. VaultKeeper creates a CouchDB user with the supplied credentials
 5. The invitation token is consumed and cannot be reused
 
-Invitation tokens are stored in the `vaultkeeper_config` CouchDB database with an
+Invitation tokens are stored in the `vaultkeeper_data` CouchDB database with an
 expiry timestamp. Expired or already-used tokens are rejected.
 
 ---
@@ -79,7 +79,7 @@ to their per-user limits. No admin action is required.
 
 ### Per-user limits
 
-Stored in `vaultkeeper_config` alongside the user's metadata:
+Stored in `vaultkeeper_data` alongside the user's metadata:
 
 | Limit | Enforcement |
 |---|---|
@@ -94,13 +94,13 @@ a vault is in use.
 
 ## Metadata storage
 
-VaultKeeper uses a dedicated CouchDB database (`vaultkeeper_config`) to store
+VaultKeeper uses a dedicated CouchDB database (`vaultkeeper_data`) to store
 application-level metadata that CouchDB does not natively track:
 
 - Invitation tokens (with expiry)
 - Per-user limits (vault count cap, size cap)
 
-No external database is required. `vaultkeeper_config` is created automatically on
+No external database is required. `vaultkeeper_data` is created automatically on
 first run alongside the other server init steps.
 
 ---
