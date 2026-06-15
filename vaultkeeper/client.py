@@ -17,13 +17,14 @@ import secrets
 import string
 import subprocess
 
+from uuid import uuid4
+
 import requests
 from requests.auth import HTTPBasicAuth
 
 from vaultkeeper.logger import get_logger
 
 _DB_NAME_RE = re.compile(r"^[a-z][a-z0-9_$()+\-/]*$")
-_VAULT_NAME_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 _SETUP_URI_SCRIPT_DEFAULT = "/scripts/generate_setupuri.ts"
 CONFIG_DB = "vaultkeeper_data"
 
@@ -41,29 +42,11 @@ class ValidationError(CouchDBError):
 # Utilities
 # ---------------------------------------------------------------------------
 
-def vault_name_to_db_name(username: str, vault_name: str) -> str:
-    return f"vault_{username}_{vault_name}"
-
-
-def db_name_to_vault_parts(db_name: str) -> tuple[str, str]:
-    """Parse a vault db name into (username, vault_name). Raises ValidationError if not a valid vault db name."""
-    prefix = "vault_"
-    if not db_name.startswith(prefix):
-        raise ValidationError(f"'{db_name}' is not a vault database name (must start with 'vault_')")
-    rest = db_name[len(prefix):]
-    parts = rest.split("_", 1)
-    if len(parts) != 2 or not parts[0] or not parts[1]:
-        raise ValidationError(f"'{db_name}' is not a valid vault database name")
-    return parts[0], parts[1]
-
-
 def validate_vault_name(vault_name: str) -> None:
-    if not _VAULT_NAME_RE.match(vault_name):
-        raise ValidationError(
-            f"'{vault_name}' is not a valid vault name. "
-            "Use only lowercase letters, digits, and underscores, "
-            "starting with a letter."
-        )
+    if not vault_name or not vault_name.strip():
+        raise ValidationError("Vault name cannot be empty.")
+    if len(vault_name) > 100:
+        raise ValidationError("Vault name must be 100 characters or fewer.")
 
 
 def validate_db_name(name: str) -> None:
@@ -403,60 +386,102 @@ class CouchDB:
         r = self._session.head(self._url(db))
         return r.status_code == 200
 
+    def _write_vault_meta(self, db_name: str, username: str, vault_name: str) -> None:
+        doc = {
+            "_id": "_local/vaultkeeper",
+            "vault_name": vault_name,
+            "username": username,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        r = self._session.put(
+            self._url(db_name, "_local", "vaultkeeper"),
+            data=json.dumps(doc),
+        )
+        if r.status_code not in (200, 201):
+            raise CouchDBError(f"Failed to write vault metadata: {r.status_code} {r.text}")
+
+    def get_vault_meta(self, db_name: str) -> dict | None:
+        r = self._session.get(self._url(db_name, "_local", "vaultkeeper"))
+        if r.status_code != 200:
+            return None
+        return r.json()
+
+    def find_vault_by_name(self, username: str, vault_name: str) -> str | None:
+        """Return the db name for a vault owned by username with the given vault_name, or None."""
+        prefix = f"vault_{username}_"
+        r = self._session.get(self._url("_all_dbs"))
+        if r.status_code != 200:
+            raise CouchDBError(f"Failed to list databases: {r.status_code} {r.text}")
+        for db in r.json():
+            if not db.startswith(prefix):
+                continue
+            meta = self.get_vault_meta(db)
+            if meta and meta.get("vault_name") == vault_name:
+                return db
+        return None
+
     def list_all_vaults(self) -> list[str]:
         r = self._session.get(self._url("_all_dbs"))
         if r.status_code != 200:
             raise CouchDBError(f"Failed to list databases: {r.status_code} {r.text}")
         return [db for db in r.json() if db.startswith("vault_")]
 
-    def list_vaults_for_user(self, username: str) -> list[str]:
-        """Return vault db names that list username in their _security document."""
-        vaults = []
-        for db in self.list_all_vaults():
-            r = self._session.get(self._url(db, "_security"))
-            if r.status_code != 200:
+    def list_vaults_for_user(self, username: str) -> list[dict]:
+        """Return vault metadata dicts for all vaults belonging to username."""
+        prefix = f"vault_{username}_"
+        r = self._session.get(self._url("_all_dbs"))
+        if r.status_code != 200:
+            raise CouchDBError(f"Failed to list databases: {r.status_code} {r.text}")
+        result = []
+        for db in r.json():
+            if not db.startswith(prefix):
                 continue
-            sec = r.json()
-            names = (
-                sec.get("admins", {}).get("names", [])
-                + sec.get("members", {}).get("names", [])
-            )
-            if username in names:
-                vaults.append(db)
-        return vaults
+            meta = self.get_vault_meta(db)
+            result.append({
+                "db_name": db,
+                "vault_name": meta.get("vault_name", db) if meta else db,
+            })
+        return result
 
     def create_vault(self, username: str, vault_name: str) -> str:
         """Create and secure a vault database. Returns the db name."""
         validate_vault_name(vault_name)
-        db = vault_name_to_db_name(username, vault_name)
-
         if not self.user_exists(username):
             raise CouchDBError(f"User '{username}' does not exist. Create the user first.")
-        if self.db_exists(db):
-            raise CouchDBError(f"Vault '{db}' already exists.")
+        if self.find_vault_by_name(username, vault_name):
+            raise CouchDBError(f"Vault '{vault_name}' already exists for user '{username}'.")
 
+        db = f"vault_{username}_{uuid4().hex}"
         r = self._session.put(self._url(db))
         if r.status_code != 201:
             raise CouchDBError(f"Failed to create database '{db}': {r.status_code} {r.text}")
 
-        security = {
-            "admins":  {"names": [username], "roles": []},
-            "members": {"names": [username], "roles": []},
-        }
-        r = self._session.put(self._url(db, "_security"), data=json.dumps(security))
-        if r.status_code != 200:
-            raise CouchDBError(f"Failed to set security on '{db}': {r.status_code} {r.text}")
+        try:
+            security = {
+                "admins":  {"names": [username], "roles": []},
+                "members": {"names": [username], "roles": []},
+            }
+            r = self._session.put(self._url(db, "_security"), data=json.dumps(security))
+            if r.status_code != 200:
+                raise CouchDBError(f"Failed to set security on '{db}': {r.status_code} {r.text}")
+            self._write_vault_meta(db, username, vault_name)
+        except CouchDBError:
+            self._session.delete(self._url(db))
+            raise
+
         LOGGER.info(f"Created vault '{vault_name}' for user '{username}'")
         return db
 
     def delete_vault(self, db_name: str) -> None:
         if not self.db_exists(db_name):
             raise CouchDBError(f"Database '{db_name}' does not exist.")
+        meta = self.get_vault_meta(db_name)
+        vault_name = meta.get("vault_name", db_name) if meta else db_name
+        username = meta.get("username", "unknown") if meta else "unknown"
         r = self._session.delete(self._url(db_name))
         if r.status_code != 200:
             raise CouchDBError(f"Failed to delete database '{db_name}': {r.status_code} {r.text}")
-        username, vault_name = db_name_to_vault_parts(db_name)
-        LOGGER.info(f"Deleted vault '{vault_name}' owned by '{username}'")
+        LOGGER.info(f"Deleted vault '{vault_name}' ({db_name}) owned by '{username}'")
 
 
     def vault_info(self, db_name: str) -> dict:
@@ -468,8 +493,10 @@ class CouchDB:
         sizes = d.get("sizes", {})
         data_size = sizes.get("active", 0)
         disk_size = sizes.get("file", 0)
+        meta = self.get_vault_meta(db_name)
         return {
             "name":          db_name,
+            "vault_name":    meta.get("vault_name", db_name) if meta else db_name,
             "doc_count":     d.get("doc_count", 0),
             "doc_del_count": d.get("doc_del_count", 0),
             "data_size":     data_size,
@@ -481,11 +508,12 @@ class CouchDB:
     def compact_vault(self, db_name: str) -> None:
         if not self.db_exists(db_name):
             raise CouchDBError(f"Database '{db_name}' does not exist.")
+        meta = self.get_vault_meta(db_name)
+        vault_name = meta.get("vault_name", db_name) if meta else db_name
         r = self._session.post(self._url(db_name, "_compact"))
         if r.status_code != 202:
             raise CouchDBError(f"Failed to compact '{db_name}': {r.status_code} {r.text}")
-        username, vault_name = db_name_to_vault_parts(db_name)
-        LOGGER.info(f"Vault '{vault_name}' was compacted by '{username}'")
+        LOGGER.info(f"Vault '{vault_name}' ({db_name}) was compacted")
 
     # -----------------------------------------------------------------------
     # Setup URI
@@ -558,8 +586,7 @@ class CouchDB:
                     uri_passphrase = line.split(":", 1)[-1].strip()
                     break
 
-        _, vault_name = db_name_to_vault_parts(db_name)
-        LOGGER.info(f"User '{username}' generated a Setup URI for vault '{vault_name}'")
+        LOGGER.info(f"User '{username}' generated a Setup URI for '{db_name}'")
 
         return {
             "uri":                      uri,

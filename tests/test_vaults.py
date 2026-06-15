@@ -1,18 +1,6 @@
 import pytest
 
-from vaultkeeper.client import CouchDB, CouchDBError, ValidationError, vault_name_to_db_name
-
-
-# ---------------------------------------------------------------------------
-# Pure-function tests (no fixtures needed)
-# ---------------------------------------------------------------------------
-
-def test_vault_name_to_db_name():
-    assert vault_name_to_db_name("alice", "notes") == "vault_alice_notes"
-
-
-def test_vault_name_to_db_name_with_numbers():
-    assert vault_name_to_db_name("user1", "vault2") == "vault_user1_vault2"
+from vaultkeeper.client import CouchDB, CouchDBError, ValidationError
 
 
 # ---------------------------------------------------------------------------
@@ -24,9 +12,18 @@ def test_create_vault_db_exists(couchdb_client: CouchDB, managed_vault):
     assert couchdb_client.db_exists(db_name)
 
 
-def test_create_vault_follows_naming_convention(couchdb_client: CouchDB, managed_vault):
+def test_create_vault_db_name_has_username_prefix(couchdb_client: CouchDB, managed_vault):
     username, _, db_name = managed_vault
-    assert db_name == f"vault_{username}_testvault"
+    assert db_name.startswith(f"vault_{username}_")
+
+
+def test_create_vault_meta_is_written(couchdb_client: CouchDB, managed_vault):
+    _, _, db_name = managed_vault
+    meta = couchdb_client.get_vault_meta(db_name)
+    assert meta is not None
+    assert meta["vault_name"] == "testvault"
+    assert "username" in meta
+    assert "created_at" in meta
 
 
 def test_create_vault_without_user_raises(couchdb_client: CouchDB):
@@ -40,18 +37,21 @@ def test_create_duplicate_vault_raises(couchdb_client: CouchDB, managed_vault):
         couchdb_client.create_vault(username, "testvault")
 
 
-@pytest.mark.parametrize("bad_name", [
-    "Has Spaces",
-    "UPPERCASE",
-    "has-hyphens",
-    "has.dots",
-    "1startswithnumber",
-    "",
-])
+@pytest.mark.parametrize("bad_name", ["", "   "])
 def test_invalid_vault_name_raises(couchdb_client: CouchDB, managed_user, bad_name: str):
     username, _ = managed_user
     with pytest.raises(ValidationError):
         couchdb_client.create_vault(username, bad_name)
+
+
+def test_vault_names_can_be_freeform(couchdb_client: CouchDB, managed_user):
+    username, _ = managed_user
+    db_name = couchdb_client.create_vault(username, "My Notes! 2024")
+    try:
+        meta = couchdb_client.get_vault_meta(db_name)
+        assert meta["vault_name"] == "My Notes! 2024"
+    finally:
+        couchdb_client.delete_vault(db_name)
 
 
 # ---------------------------------------------------------------------------
@@ -60,7 +60,16 @@ def test_invalid_vault_name_raises(couchdb_client: CouchDB, managed_user, bad_na
 
 def test_vault_appears_in_user_list(couchdb_client: CouchDB, managed_vault):
     username, _, db_name = managed_vault
-    assert db_name in couchdb_client.list_vaults_for_user(username)
+    db_names = [v["db_name"] for v in couchdb_client.list_vaults_for_user(username)]
+    assert db_name in db_names
+
+
+def test_vault_list_includes_vault_name(couchdb_client: CouchDB, managed_vault):
+    username, _, db_name = managed_vault
+    vaults = couchdb_client.list_vaults_for_user(username)
+    match = next((v for v in vaults if v["db_name"] == db_name), None)
+    assert match is not None
+    assert match["vault_name"] == "testvault"
 
 
 def test_vault_appears_in_all_vaults(couchdb_client: CouchDB, managed_vault):
@@ -75,7 +84,8 @@ def test_all_vaults_are_prefixed(couchdb_client: CouchDB, managed_vault):
 
 def test_vault_not_in_other_users_list(couchdb_client: CouchDB, managed_vault):
     _, _, db_name = managed_vault
-    assert db_name not in couchdb_client.list_vaults_for_user("no_such_user_xyzzy")
+    db_names = [v["db_name"] for v in couchdb_client.list_vaults_for_user("no_such_user_xyzzy")]
+    assert db_name not in db_names
 
 
 # ---------------------------------------------------------------------------
@@ -86,6 +96,7 @@ def test_vault_info_structure(couchdb_client: CouchDB, managed_vault):
     _, _, db_name = managed_vault
     info = couchdb_client.vault_info(db_name)
     assert info["name"] == db_name
+    assert info["vault_name"] == "testvault"
     assert isinstance(info["doc_count"], int)
     assert isinstance(info["doc_del_count"], int)
     assert isinstance(info["data_size"], int)

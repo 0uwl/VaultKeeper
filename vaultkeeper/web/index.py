@@ -13,7 +13,7 @@ from flask import (
     current_app,
 )
 
-from vaultkeeper.client import CouchDB, CouchDBError, ValidationError, CONFIG_DB, db_name_to_vault_parts
+from vaultkeeper.client import CouchDB, CouchDBError, ValidationError, CONFIG_DB
 
 index = Blueprint("index", __name__)
 
@@ -396,7 +396,7 @@ def vaults():
 
         try:
             db_name = client.create_vault(username, vault_name)
-            flash(f"Vault '{db_name}' created.", "success")
+            flash(f"Vault '{vault_name}' created.", "success")
             return redirect(url_for("index.vault_detail", db_name=db_name))
         except (CouchDBError, ValidationError) as e:
             current_app.logger.error(f"Error when creating vault '{vault_name}': {str(e)}")
@@ -405,7 +405,10 @@ def vaults():
 
     try:
         if _is_admin():
-            vault_list = client.list_all_vaults()
+            vault_list = [
+                {"db_name": db, "vault_name": (client.get_vault_meta(db) or {}).get("vault_name", db)}
+                for db in client.list_all_vaults()
+            ]
         else:
             vault_list = client.list_vaults_for_user(_current_user())
     except CouchDBError as e:
@@ -424,15 +427,9 @@ def vault_detail(db_name):
 
     client = _get_client()
     try:
-        _, vault_name = db_name_to_vault_parts(db_name)
-    except ValidationError as e:
-        current_app.logger.error(f"Error parsing database name '{db_name}': {str(e)}")
-        flash(str(e), "error")
-        return redirect(url_for("index.vaults"))
-    try:
         info = client.vault_info(db_name)
     except CouchDBError as e:
-        current_app.logger.error(f"Error fetching details for vault '{vault_name}': {str(e)}")
+        current_app.logger.error(f"Error fetching details for vault '{db_name}': {str(e)}")
         flash(str(e), "error")
         return redirect(url_for("index.vaults"))
     return render_template("vault_detail.html", vault=info)
@@ -446,12 +443,8 @@ def vault_compact(db_name):
         return redirect(url_for("index.vaults"))
 
     client = _get_client()
-    try:
-        _, vault_name = db_name_to_vault_parts(db_name)
-    except ValidationError as e:
-        current_app.logger.error(f"Error parsing database name '{db_name}': {str(e)}")
-        flash(str(e), "error")
-        return redirect(url_for("index.vaults"))
+    meta = client.get_vault_meta(db_name)
+    vault_name = meta.get("vault_name", db_name) if meta else db_name
     try:
         client.compact_vault(db_name)
         flash(f"Compaction started for '{vault_name}'.", "success")
@@ -469,12 +462,8 @@ def vault_delete(db_name):
         return redirect(url_for("index.vaults"))
 
     client = _get_client()
-    try:
-        _, vault_name = db_name_to_vault_parts(db_name)
-    except ValidationError as e:
-        current_app.logger.error(f"Error parsing database name '{db_name}': {str(e)}")
-        flash(str(e), "error")
-        return redirect(url_for("index.vaults"))
+    meta = client.get_vault_meta(db_name)
+    vault_name = meta.get("vault_name", db_name) if meta else db_name
     try:
         client.delete_vault(db_name)
         flash(f"Vault '{vault_name}' deleted.", "success")
@@ -499,13 +488,14 @@ def vault_setup_uri(db_name):
     except CouchDBError as e:
         current_app.logger.error(f"Error: {str(e)}")
         flash(str(e), "error")
-
-    try:
-        username, vault_name = db_name_to_vault_parts(db_name)
-    except ValidationError as e:
-        current_app.logger.error(f"Error parsing database name '{db_name}': {str(e)}")
-        flash(str(e), "error")
         return redirect(url_for("index.vaults"))
+
+    meta = client.get_vault_meta(db_name)
+    if meta is None:
+        flash(f"Vault metadata not found for '{db_name}'.", "error")
+        return redirect(url_for("index.vaults"))
+    username = meta.get("username", _current_user())
+    vault_name = meta.get("vault_name", db_name)
 
     result = None
     if request.method == "POST":
@@ -575,7 +565,7 @@ def provision():
             result = client.generate_setup_uri(username, user_password, db_name)
             result["db_name"] = db_name
             result["username"] = username
-            flash(f"Provisioned '{username}' with vault '{db_name}'.", "success")
+            flash(f"Provisioned '{username}' with vault '{vault_name}'.", "success")
         except (CouchDBError, ValidationError) as e:
             current_app.logger.error(f"Error when provisioning new vault '{vault_name}' for user '{username}': {str(e)}")
             flash(str(e), "error")

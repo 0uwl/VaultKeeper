@@ -1,9 +1,12 @@
 {% extends "base.html" %}
-{% block title %}{{ vault.name }} - VaultKeeper{% endblock %}
+{% block title %}{{ vault.vault_name }} - VaultKeeper{% endblock %}
 
 {% block content %}
 <div class="d-flex align-items-center gap-3 mb-4">
-  <h1 class="h3 mb-0">{{ vault.name }}</h1>
+  <div>
+    <h1 class="h3 mb-0">{{ vault.vault_name }}</h1>
+    {% if session.is_admin %}<div class="small text-secondary font-monospace">{{ vault.name }}</div>{% endif %}
+  </div>
   <a href="{{ url_for('index.vaults') }}" class="btn btn-sm btn-outline-secondary">← Vaults</a>
 </div>
 
@@ -65,7 +68,7 @@
       <div class="card-body">
         <p class="text-secondary small">This permanently deletes all synced data in this vault.</p>
         <form method="post" action="{{ url_for('index.vault_delete', db_name=vault.name) }}"
-              onsubmit="return confirm('Delete {{ vault.name }}? ALL DATA WILL BE LOST.')">
+              onsubmit="return confirm('Delete {{ vault.vault_name }}? ALL DATA WILL BE LOST.')">
           <button type="submit" class="btn btn-danger">Delete vault</button>
         </form>
       </div>

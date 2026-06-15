@@ -9,26 +9,27 @@
   <table class="table table-hover align-middle">
     <thead class="table-dark">
       <tr>
-        <th>Database</th>
+        <th>Vault</th>
         <th class="text-end">Actions</th>
       </tr>
     </thead>
     <tbody>
-      {% for db in vaults %}
+      {% for vault in vaults %}
       <tr>
         <td>
-          <a href="{{ url_for('index.vault_detail', db_name=db) }}" class="text-decoration-none">
-            {{ db }}
+          <a href="{{ url_for('index.vault_detail', db_name=vault.db_name) }}" class="text-decoration-none fw-semibold">
+            {{ vault.vault_name }}
           </a>
+          {% if session.is_admin %}<div class="small text-secondary font-monospace">{{ vault.db_name }}</div>{% endif %}
         </td>
         <td class="text-end">
-          <a href="{{ url_for('index.vault_detail', db_name=db) }}"
+          <a href="{{ url_for('index.vault_detail', db_name=vault.db_name) }}"
              class="btn btn-sm btn-outline-secondary me-1">View</a>
-          <a href="{{ url_for('index.vault_setup_uri', db_name=db) }}"
+          <a href="{{ url_for('index.vault_setup_uri', db_name=vault.db_name) }}"
              class="btn btn-sm btn-outline-primary me-1">Setup URI</a>
-          <form method="post" action="{{ url_for('index.vault_delete', db_name=db) }}"
+          <form method="post" action="{{ url_for('index.vault_delete', db_name=vault.db_name) }}"
                 class="d-inline"
-                onsubmit="return confirm('Delete vault {{ db }}? ALL DATA WILL BE LOST.')">
+                onsubmit="return confirm('Delete vault {{ vault.vault_name }}? ALL DATA WILL BE LOST.')">
             <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
           </form>
         </td>
@@ -45,8 +46,8 @@
   <div class="card-header">Create vault</div>
   <div class="card-body">
     <p class="text-secondary small mb-3">
-      Database will be named <code>vault_&lt;username&gt;_&lt;vault_name&gt;</code>.
       {% if session.is_admin %}The user must already exist.{% endif %}
+      Vault names can be any text up to 100 characters.
     </p>
     <form method="post">
       <div class="row g-3">
