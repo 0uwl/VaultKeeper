@@ -16,6 +16,7 @@ import os
 import sys
 
 from flask import Flask, current_app
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from vaultkeeper.client import CouchDB, CouchDBError
 from vaultkeeper.logger import get_logger
@@ -23,6 +24,7 @@ from vaultkeeper.logger import get_logger
 
 def create_app() -> Flask:
     app = Flask(__name__)
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
     secret_key = os.environ.get("SECRET_KEY")
     if not secret_key:
         sys.exit("Error: SECRET_KEY is not set. Generate one with: openssl rand -hex 32")
