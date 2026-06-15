@@ -9,3 +9,6 @@
 - **Build a proper frontend** - all static files are currently served directly by Flask.
   It works fine and is made pretty using Bootstrap but using an established frontend
   framework would make future frontend development easier.
+- **Vault name translation** - users should be able to name their vault with capital letters and spaces. The name should be
+  translated to a database name by setting characters to lowercase and replacing spaces with underscores. The real name
+  should be added to a meta data document in the vault database
