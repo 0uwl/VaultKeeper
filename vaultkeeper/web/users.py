@@ -1,4 +1,6 @@
-from flask import Blueprint, flash, redirect, render_template, request, url_for, current_app
+from datetime import datetime, timezone
+
+from flask import Blueprint, flash, redirect, render_template, request, session, url_for, current_app
 
 from vaultkeeper.client import CouchDBError, ValidationError
 from vaultkeeper.web.helpers import (
@@ -35,7 +37,26 @@ def users_list():
         current_app.logger.error(f"Error when listing users: {str(e)}")
         flash(str(e), "error")
         user_list = []
-    return render_template("users.html", users=user_list)
+
+    try:
+        invitation_list = client.list_invitations()
+        now = datetime.now(timezone.utc)
+        for inv in invitation_list:
+            inv["expired"] = datetime.fromisoformat(inv["expires_at"]) < now
+    except CouchDBError as e:
+        current_app.logger.error(f"Error when listing invitations: {str(e)}")
+        invitation_list = []
+
+    invite_url = session.pop("pending_invite_url", None)
+    active_tab = request.args.get("tab", "users")
+
+    return render_template(
+        "users.html",
+        users=user_list,
+        invitations=invitation_list,
+        invite_url=invite_url,
+        active_tab=active_tab,
+    )
 
 
 @users.route("/users/<username>")

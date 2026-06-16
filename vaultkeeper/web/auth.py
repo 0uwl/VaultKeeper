@@ -1,5 +1,4 @@
 import os
-from datetime import datetime, timezone
 
 from flask import (
     Blueprint,
@@ -105,7 +104,6 @@ def enroll(token):
 @admin_required
 def invitations():
     client = _get_client()
-    invite_url = None
 
     if request.method == "POST":
         try:
@@ -113,22 +111,13 @@ def invitations():
             token = client.create_invitation(expiry_hours=expiry_hours)
             invite_url = url_for("auth.enroll", token=token, _external=True)
             client.log_audit_event("invitation.create", actor=_current_user(), target=token[:8], details={"expiry_hours": expiry_hours})
+            session["pending_invite_url"] = invite_url
             flash("Invitation created.", "success")
         except (CouchDBError, ValueError) as e:
             current_app.logger.error(f"Error creating invitation: {str(e)}")
             flash(str(e), "error")
 
-    try:
-        invitation_list = client.list_invitations()
-        now = datetime.now(timezone.utc)
-        for inv in invitation_list:
-            inv["expired"] = datetime.fromisoformat(inv["expires_at"]) < now
-    except CouchDBError as e:
-        current_app.logger.error(f"Error listing invitations: {str(e)}")
-        flash(str(e), "error")
-        invitation_list = []
-
-    return render_template("invitations.html", invitations=invitation_list, invite_url=invite_url)
+    return redirect(url_for("users.users_list", tab="invitations"))
 
 
 @auth.route("/invitations/<token>/delete", methods=["POST"])
@@ -142,4 +131,4 @@ def invitation_delete(token):
     except CouchDBError as e:
         current_app.logger.error(f"Error deleting invitation: {str(e)}")
         flash(str(e), "error")
-    return redirect(url_for("auth.invitations"))
+    return redirect(url_for("users.users_list", tab="invitations"))

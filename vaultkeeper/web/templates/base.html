@@ -23,7 +23,7 @@
           </li>
           {% if session.is_admin %}
           <li class="nav-item">
-            <a class="nav-link {% if request.endpoint in ('users.users_list', 'users.user_detail') %}active{% endif %}"
+            <a class="nav-link {% if request.endpoint in ('users.users_list', 'users.user_detail', 'auth.invitations', 'auth.invitation_delete') %}active{% endif %}"
                href="{{ url_for('users.users_list') }}">Users</a>
           </li>
           {% endif %}
@@ -35,10 +35,6 @@
           <li class="nav-item">
             <a class="nav-link {% if request.endpoint == 'vaults.provision' %}active{% endif %}"
                href="{{ url_for('vaults.provision') }}">Provision</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link {% if request.endpoint in ('auth.invitations', 'auth.invitation_delete') %}active{% endif %}"
-               href="{{ url_for('auth.invitations') }}">Invitations</a>
           </li>
           <li class="nav-item">
             <a class="nav-link {% if request.endpoint == 'main.settings' %}active{% endif %}"
