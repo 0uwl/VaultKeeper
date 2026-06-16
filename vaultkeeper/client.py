@@ -308,6 +308,59 @@ class CouchDB:
         if r.status_code not in (200, 201, 202):
             raise CouchDBError(f"Failed to update server settings: {r.status_code} {r.text}")
 
+    def log_audit_event(
+        self,
+        action: str,
+        actor: str,
+        target: str | None = None,
+        details: dict | None = None,
+    ) -> None:
+        """Write an audit event to vaultkeeper_data. Best-effort: never raises."""
+        now_utc = datetime.now(timezone.utc)
+        ts_id = now_utc.strftime("%Y%m%dT%H%M%S%f")  # UTC for consistent sort order
+        doc_id = f"audit:{ts_id}:{secrets.token_hex(4)}"
+        doc = {
+            "_id": doc_id,
+            "type": "audit",
+            "timestamp": now_utc.astimezone().isoformat(),  # local tz via TZ env var
+            "actor": actor,
+            "action": action,
+            "target": target,
+            "details": details or {},
+        }
+        try:
+            r = self._session.put(self._url(CONFIG_DB, doc_id), data=json.dumps(doc))
+            if r.status_code not in (201, 202):
+                LOGGER.warning(f"Failed to write audit event '{action}': {r.status_code} {r.text}")
+        except Exception as e:
+            LOGGER.warning(f"Failed to write audit event '{action}': {e}")
+
+    def list_audit_log(self, limit: int = 200) -> list[dict]:
+        """Return audit events newest-first from vaultkeeper_data."""
+        r = self._session.get(
+            self._url(CONFIG_DB, "_all_docs"),
+            params={
+                "startkey": '"audit;"',
+                "endkey": '"audit:"',
+                "descending": "true",
+                "include_docs": "true",
+                "limit": str(limit),
+            },
+        )
+        if r.status_code != 200:
+            raise CouchDBError(f"Failed to list audit log: {r.status_code} {r.text}")
+        return [row["doc"] for row in r.json().get("rows", [])]
+
+    def purge_audit_events(self, id_rev_pairs: list[tuple[str, str]]) -> int:
+        """Bulk-delete audit documents. Returns the count successfully deleted."""
+        if not id_rev_pairs:
+            return 0
+        docs = [{"_id": doc_id, "_rev": rev, "_deleted": True} for doc_id, rev in id_rev_pairs]
+        r = self._session.post(self._url(CONFIG_DB, "_bulk_docs"), data=json.dumps({"docs": docs}))
+        if r.status_code not in (200, 201):
+            raise CouchDBError(f"Failed to delete audit events: {r.status_code} {r.text}")
+        return sum(1 for row in r.json() if not row.get("error"))
+
     def get_effective_limits(self, username: str) -> dict:
         """Return vault limits for a user, falling back to server defaults."""
         limits = self.get_user_limits(username)

@@ -11,42 +11,42 @@
   {% if session.logged_in %}
   <nav class="navbar navbar-expand-md navbar-dark bg-dark border-bottom border-secondary mb-4">
     <div class="container-lg">
-      <a class="navbar-brand fw-bold" href="{{ url_for('index.dashboard') }}">VaultKeeper</a>
+      <a class="navbar-brand fw-bold" href="{{ url_for('main.dashboard') }}">VaultKeeper</a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
         <span class="navbar-toggler-icon"></span>
       </button>
       <div class="collapse navbar-collapse" id="navMenu">
         <ul class="navbar-nav me-auto">
           <li class="nav-item">
-            <a class="nav-link {% if request.endpoint == 'index.dashboard' %}active{% endif %}"
-               href="{{ url_for('index.dashboard') }}">Dashboard</a>
+            <a class="nav-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}"
+               href="{{ url_for('main.dashboard') }}">Dashboard</a>
           </li>
           {% if session.is_admin %}
           <li class="nav-item">
-            <a class="nav-link {% if request.endpoint in ('index.users', 'index.user_detail') %}active{% endif %}"
-               href="{{ url_for('index.users') }}">Users</a>
+            <a class="nav-link {% if request.endpoint in ('users.users_list', 'users.user_detail', 'auth.invitations', 'auth.invitation_delete') %}active{% endif %}"
+               href="{{ url_for('users.users_list') }}">Users</a>
           </li>
           {% endif %}
           <li class="nav-item">
-            <a class="nav-link {% if request.endpoint in ('index.vaults', 'index.vault_detail', 'index.vault_setup_uri') %}active{% endif %}"
-               href="{{ url_for('index.vaults') }}">Vaults</a>
+            <a class="nav-link {% if request.endpoint in ('vaults.vaults_list', 'vaults.vault_detail', 'vaults.vault_setup_uri') %}active{% endif %}"
+               href="{{ url_for('vaults.vaults_list') }}">Vaults</a>
           </li>
           {% if session.is_admin %}
           <li class="nav-item">
-            <a class="nav-link {% if request.endpoint == 'index.provision' %}active{% endif %}"
-               href="{{ url_for('index.provision') }}">Provision</a>
+            <a class="nav-link {% if request.endpoint == 'vaults.provision' %}active{% endif %}"
+               href="{{ url_for('vaults.provision') }}">Provision</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link {% if request.endpoint in ('index.invitations', 'index.invitation_delete') %}active{% endif %}"
-               href="{{ url_for('index.invitations') }}">Invitations</a>
+            <a class="nav-link {% if request.endpoint == 'main.settings' %}active{% endif %}"
+               href="{{ url_for('main.settings') }}">Settings</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link {% if request.endpoint == 'index.settings' %}active{% endif %}"
-               href="{{ url_for('index.settings') }}">Settings</a>
+            <a class="nav-link {% if request.endpoint == 'audit.audit_log' %}active{% endif %}"
+               href="{{ url_for('audit.audit_log') }}">Audit</a>
           </li>
           {% endif %}
         </ul>
-        <form action="{{ url_for('index.logout') }}" method="post" class="d-flex">
+        <form action="{{ url_for('auth.logout') }}" method="post" class="d-flex">
           <button type="submit" class="btn btn-outline-secondary btn-sm">Logout</button>
         </form>
       </div>
@@ -70,5 +70,6 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  {% block scripts %}{% endblock %}
 </body>
 </html>

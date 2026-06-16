@@ -31,6 +31,7 @@ services:
       COUCHDB_PASSWORD: ${COUCHDB_PASSWORD:?COUCHDB_PASSWORD is required}
       COUCHDB_PUBLIC_URL: ${COUCHDB_PUBLIC_URL:-}
       SECRET_KEY: ${SECRET_KEY:?SECRET_KEY is required}
+      TZ: ${TZ:-UTC}
     ports:
       - "5985:5985"
 

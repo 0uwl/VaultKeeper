@@ -6,9 +6,11 @@
   and end-users can use to login and enroll with.
 - **Build a proper frontend** - all static files are currently served directly by Flask.
   It works fine and is made pretty using Bootstrap but using an established frontend
-  framework would make future frontend development easier.
+  framework would make future frontend development easier and would make the app feel
+  snappier and less janky.
 
 ## General
 
-- **Audit log** - an event log should be available to the admin to see detailed events triggered by
-  users. This log can be stored in the new `vaultkeeper_data` database and be viewable on the admin dashboard.
+- **CLI audit logging** - the CLI is not audited yet. Since the CLI is only ever used by
+  the server admin, this is low priority, but it would be consistent to record CLI-triggered
+  events in the same audit log in `vaultkeeper_data`.

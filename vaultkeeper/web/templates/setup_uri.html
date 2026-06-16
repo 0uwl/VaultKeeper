@@ -4,7 +4,7 @@
 {% block content %}
 <div class="d-flex align-items-center gap-3 mb-4">
   <h1 class="h3 mb-0">Setup URI</h1>
-  <a href="{{ url_for('index.vault_detail', db_name=db_name) }}"
+  <a href="{{ url_for('vaults.vault_detail', db_name=db_name) }}"
      class="btn btn-sm btn-outline-secondary">← {{ db_name }}</a>
 </div>
 
@@ -84,7 +84,7 @@
   </div>
 </div>
 
-<a href="{{ url_for('index.vault_setup_uri', db_name=db_name) }}" class="btn btn-outline-secondary">
+<a href="{{ url_for('vaults.vault_setup_uri', db_name=db_name) }}" class="btn btn-outline-secondary">
   Generate another URI
 </a>
 

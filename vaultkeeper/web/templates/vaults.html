@@ -17,17 +17,17 @@
       {% for vault in vaults %}
       <tr>
         <td>
-          <a href="{{ url_for('index.vault_detail', db_name=vault.db_name) }}" class="text-decoration-none fw-semibold">
+          <a href="{{ url_for('vaults.vault_detail', db_name=vault.db_name) }}" class="text-decoration-none fw-semibold">
             {{ vault.vault_name }}
           </a>
           {% if session.is_admin %}<div class="small text-secondary font-monospace">{{ vault.db_name }}</div>{% endif %}
         </td>
         <td class="text-end">
-          <a href="{{ url_for('index.vault_detail', db_name=vault.db_name) }}"
+          <a href="{{ url_for('vaults.vault_detail', db_name=vault.db_name) }}"
              class="btn btn-sm btn-outline-secondary me-1">View</a>
-          <a href="{{ url_for('index.vault_setup_uri', db_name=vault.db_name) }}"
+          <a href="{{ url_for('vaults.vault_setup_uri', db_name=vault.db_name) }}"
              class="btn btn-sm btn-outline-primary me-1">Setup URI</a>
-          <form method="post" action="{{ url_for('index.vault_delete', db_name=vault.db_name) }}"
+          <form method="post" action="{{ url_for('vaults.vault_delete', db_name=vault.db_name) }}"
                 class="d-inline"
                 onsubmit="return confirm('Delete vault {{ vault.vault_name }}? ALL DATA WILL BE LOST.')">
             <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
@@ -75,5 +75,11 @@
       </div>
     </form>
   </div>
+</div>
+
+<div class="alert alert-secondary mt-4 small">
+  <strong>Privacy tip:</strong> Enable end-to-end encryption in the LiveSync plugin to ensure vault
+  contents are encrypted before leaving your device. Even the server operator cannot read encrypted
+  vault data.
 </div>
 {% endblock %}

@@ -5,9 +5,9 @@
 <div class="d-flex align-items-center gap-3 mb-4">
   <h1 class="h3 mb-0">{{ username }}</h1>
   {% if session.is_admin %}
-  <a href="{{ url_for('index.users') }}" class="btn btn-sm btn-outline-secondary">← Users</a>
+  <a href="{{ url_for('users.users_list') }}" class="btn btn-sm btn-outline-secondary">← Users</a>
   {% else %}
-  <a href="{{ url_for('index.dashboard') }}" class="btn btn-sm btn-outline-secondary">← Dashboard</a>
+  <a href="{{ url_for('main.dashboard') }}" class="btn btn-sm btn-outline-secondary">← Dashboard</a>
   {% endif %}
 </div>
 
@@ -25,15 +25,15 @@
       {% for vault in vaults %}
       <tr>
         <td>
-          <a href="{{ url_for('index.vault_detail', db_name=vault.db_name) }}" class="text-decoration-none fw-semibold">
+          <a href="{{ url_for('vaults.vault_detail', db_name=vault.db_name) }}" class="text-decoration-none fw-semibold">
             {{ vault.vault_name }}
           </a>
           <div class="small text-secondary font-monospace">{{ vault.db_name }}</div>
         </td>
         <td class="text-end">
-          <a href="{{ url_for('index.vault_detail', db_name=vault.db_name) }}"
+          <a href="{{ url_for('vaults.vault_detail', db_name=vault.db_name) }}"
              class="btn btn-sm btn-outline-secondary me-1">View</a>
-          <a href="{{ url_for('index.vault_setup_uri', db_name=vault.db_name) }}"
+          <a href="{{ url_for('vaults.vault_setup_uri', db_name=vault.db_name) }}"
              class="btn btn-sm btn-outline-primary">Setup URI</a>
         </td>
       </tr>
@@ -50,7 +50,7 @@
     <div class="card h-100">
       <div class="card-header">Change password</div>
       <div class="card-body">
-        <form method="post" action="{{ url_for('index.user_passwd', username=username) }}">
+        <form method="post" action="{{ url_for('users.user_passwd', username=username) }}">
           <div class="mb-3">
             <label for="password" class="form-label">New password</label>
             <input id="password" name="password" type="password" class="form-control" required>
@@ -70,7 +70,7 @@
           Leave a field blank to remove the limit.
           Vault count is a hard limit; size is advisory (cannot interrupt an active sync).
         </p>
-        <form method="post" action="{{ url_for('index.user_limits', username=username) }}">
+        <form method="post" action="{{ url_for('users.user_limits', username=username) }}">
           <div class="row g-3">
             <div class="col-sm-6">
               <label for="max_vaults" class="form-label">Max vaults</label>
@@ -102,7 +102,7 @@
   <div class="card-header text-danger">Danger zone</div>
   <div class="card-body">
     <p class="text-secondary small">Deleting this user does not delete their vault databases.</p>
-    <form method="post" action="{{ url_for('index.user_delete', username=username) }}"
+    <form method="post" action="{{ url_for('users.user_delete', username=username) }}"
           onsubmit="return confirm('Delete user {{ username }}? This cannot be undone.')">
       <button type="submit" class="btn btn-danger">Delete user</button>
     </form>
