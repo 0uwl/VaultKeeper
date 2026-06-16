@@ -23,6 +23,7 @@ for day-to-day operations. Runs on port **5985** alongside CouchDB on port **598
 | `COUCHDB_PASSWORD` | No | CouchDB admin password |
 | `COUCHDB_PUBLIC_URL` | No | External CouchDB URL for setup URIs (falls back to `COUCHDB_HOST`) |
 | `VAULTKEEPER_WEB_PORT` | No | Web server port (default: `5985`) |
+| `TZ` | No | IANA timezone name for audit log timestamps (default: `UTC`). Example: `Europe/Amsterdam`. |
 
 `SECRET_KEY` is required - the app exits with a clear message at startup if it is not set.
 Using a random fallback would silently break sessions across Gunicorn workers (each worker
@@ -53,7 +54,54 @@ POST /vaults/<db_name>/setup-uri  Generate and display a LiveSync setup URI
 
 GET  /provision                   Provision form
 POST /provision                   Create user + vault + setup URI in one step
+
+GET  /audit                       Audit log - chronological event history (admin only)
 ```
+
+## Audit log
+
+Every significant action taken through the web UI is recorded as an audit event in the
+`vaultkeeper_data` CouchDB database. Events are stored as documents with the `audit:` prefix
+and are queryable in time order. The `/audit` page (admin only) shows the 200 most recent
+events; the 10 most recent also appear on the admin dashboard.
+
+### Event reference
+
+| Action | Actor | Target | Details |
+|---|---|---|---|
+| `login.success` | username | - | - |
+| `login.failure` | `anonymous` | attempted username | - |
+| `logout` | username | - | - |
+| `user.create` | admin | new username | - |
+| `user.delete` | admin | username | - |
+| `user.passwd` | actor | username | - |
+| `user.limits` | admin | username | `max_vaults`, `max_vault_size_bytes` |
+| `user.enroll` | new username | - | `token` (first 8 chars) |
+| `vault.create` | actor | db_name | `vault_name`, `owner` |
+| `vault.delete` | actor | db_name | `vault_name` |
+| `vault.compact` | actor | db_name | `vault_name` |
+| `vault.setup_uri` | actor | db_name | `vault_name` |
+| `invitation.create` | admin | token (first 8 chars) | `expiry_hours` |
+| `invitation.delete` | admin | token (first 8 chars) | - |
+| `settings.update` | admin | - | `default_max_vaults`, `default_max_vault_size_bytes` |
+| `provision` | admin | username | `vault_name`, `db_name` |
+
+### Document schema
+
+```json
+{
+  "_id": "audit:20260615T103000123456:a1b2c3d4",
+  "type": "audit",
+  "timestamp": "2026-06-15T10:30:00.123456+00:00",
+  "actor": "admin",
+  "action": "vault.create",
+  "target": "vault_alice_abc123",
+  "details": { "vault_name": "notes", "owner": "alice" }
+}
+```
+
+The document ID encodes a compact UTC timestamp followed by a random 4-byte hex suffix,
+which makes events sortable by `_all_docs` without a view.
 
 ## Reverse proxy
 

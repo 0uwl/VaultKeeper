@@ -44,6 +44,10 @@
             <a class="nav-link {% if request.endpoint == 'index.settings' %}active{% endif %}"
                href="{{ url_for('index.settings') }}">Settings</a>
           </li>
+          <li class="nav-item">
+            <a class="nav-link {% if request.endpoint == 'index.audit_log' %}active{% endif %}"
+               href="{{ url_for('index.audit_log') }}">Audit</a>
+          </li>
           {% endif %}
         </ul>
         <form action="{{ url_for('index.logout') }}" method="post" class="d-flex">

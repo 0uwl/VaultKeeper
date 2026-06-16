@@ -66,9 +66,20 @@ docker exec -it vk-server cli provision alice notes
 
 ---
 
+## Features
+
+- **Vault management** - create, delete, and inspect CouchDB vault databases from a browser UI
+- **User management** - create users, change passwords, set per-user vault limits
+- **Enrollment invitations** - generate time-limited invite links for self-service account creation
+- **Setup URI generation** - produce Obsidian LiveSync setup URIs with one click
+- **Audit log** - every significant action (logins, vault creation, user changes) is recorded
+  and viewable by the admin at `/audit` and on the dashboard
+
+---
+
 ## Documentation
 
 - [CLI reference](docs/cli.md) - commands, configuration, vault naming, Setup URIs
-- [Web application](docs/web.md) - routes, technology stack, reverse proxy setup
+- [Web application](docs/web.md) - routes, technology stack, audit log, reverse proxy setup
 - [Development](docs/development.md) - building, dependencies, testing
 - [Roadmap](docs/roadmap.md) - planned features and known issues

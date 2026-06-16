@@ -104,6 +104,7 @@ def login():
                 session["logged_in"] = True
                 session["username"] = username
                 session["is_admin"] = True
+                _get_client().log_audit_event("login.success", actor=username)
                 return redirect(url_for("index.dashboard"))
             except CouchDBError as e:
                 current_app.logger.error(f"Error when logging in: {str(e)}")
@@ -115,9 +116,11 @@ def login():
                     session["logged_in"] = True
                     session["username"] = username
                     session["is_admin"] = False
+                    client.log_audit_event("login.success", actor=username)
                     return redirect(url_for("index.dashboard"))
                 else:
                     current_app.logger.error(f"Invalid credentials for user '{username}'")
+                    client.log_audit_event("login.failure", actor="anonymous", target=username)
                     flash("Invalid credentials.", "error")
             except CouchDBError as e:
                 current_app.logger.error(f"Error when logging in: {str(e)}")
@@ -128,6 +131,8 @@ def login():
 
 @index.route("/logout", methods=["POST"])
 def logout():
+    actor = _current_user()
+    _get_client().log_audit_event("logout", actor=actor)
     session.clear()
     return redirect(url_for("index.login"))
 
@@ -159,11 +164,16 @@ def dashboard():
         current_app.logger.error(f"Error fetching CouchDB info: {str(e)}")
         flash(str(e), "error")
         server_info, user_count, vault_count = None, 0, 0
+    try:
+        recent_events = client.list_audit_log(limit=10)
+    except CouchDBError:
+        recent_events = []
     return render_template(
         "dashboard.html",
         server_info=server_info,
         user_count=user_count,
         vault_count=vault_count,
+        recent_events=recent_events,
     )
 
 
@@ -194,6 +204,7 @@ def enroll(token):
             try:
                 client.create_user(username, password)
                 client.consume_invitation(token, username)
+                client.log_audit_event("user.enroll", actor=username, details={"token": token[:8]})
                 flash(f"Account created. Welcome, {username}! You can now log in.", "success")
                 return redirect(url_for("index.login"))
             except CouchDBError as e:
@@ -218,6 +229,7 @@ def invitations():
             expiry_hours = int(request.form.get("expiry_hours") or 72)
             token = client.create_invitation(expiry_hours=expiry_hours)
             invite_url = url_for("index.enroll", token=token, _external=True)
+            client.log_audit_event("invitation.create", actor=_current_user(), target=token[:8], details={"expiry_hours": expiry_hours})
             flash("Invitation created.", "success")
         except (CouchDBError, ValueError) as e:
             current_app.logger.error(f"Error creating invitation: {str(e)}")
@@ -242,6 +254,7 @@ def invitation_delete(token):
     client = _get_client()
     try:
         client.delete_invitation(token)
+        client.log_audit_event("invitation.delete", actor=_current_user(), target=token[:8])
         flash("Invitation deleted.", "success")
     except CouchDBError as e:
         current_app.logger.error(f"Error deleting invitation: {str(e)}")
@@ -263,6 +276,7 @@ def users():
         password = request.form.get("password", "")
         try:
             client.create_user(username, password)
+            client.log_audit_event("user.create", actor=_current_user(), target=username)
             flash(f"User '{username}' created.", "success")
         except (CouchDBError, ValidationError) as e:
             current_app.logger.error(f"Error when creating user '{username}': {str(e)}")
@@ -321,6 +335,7 @@ def user_delete(username):
     client = _get_client()
     try:
         client.delete_user(username)
+        client.log_audit_event("user.delete", actor=_current_user(), target=username)
         flash(f"User '{username}' deleted.", "success")
     except CouchDBError as e:
         current_app.logger.error(f"Error when deleting user '{username}': {str(e)}")
@@ -338,6 +353,7 @@ def user_passwd(username):
     client = _get_client()
     try:
         client.change_password(username, request.form.get("password", ""))
+        client.log_audit_event("user.passwd", actor=_current_user(), target=username)
         flash(f"Password updated for '{username}'.", "success")
     except CouchDBError as e:
         current_app.logger.error(f"Error when changing password for user '{username}': {str(e)}")
@@ -355,6 +371,7 @@ def user_limits(username):
         max_vaults = int(max_vaults_raw) if max_vaults_raw else None
         max_vault_size_bytes = int(max_size_raw) if max_size_raw else None
         client.set_user_limits(username, max_vaults, max_vault_size_bytes)
+        client.log_audit_event("user.limits", actor=_current_user(), target=username, details={"max_vaults": max_vaults, "max_vault_size_bytes": max_vault_size_bytes})
         flash(f"Limits updated for '{username}'.", "success")
     except (CouchDBError, ValueError) as e:
         current_app.logger.error(f"Error setting limits for '{username}': {str(e)}")
@@ -396,6 +413,7 @@ def vaults():
 
         try:
             db_name = client.create_vault(username, vault_name)
+            client.log_audit_event("vault.create", actor=_current_user(), target=db_name, details={"vault_name": vault_name, "owner": username})
             flash(f"Vault '{vault_name}' created.", "success")
             return redirect(url_for("index.vault_detail", db_name=db_name))
         except (CouchDBError, ValidationError) as e:
@@ -447,6 +465,7 @@ def vault_compact(db_name):
     vault_name = meta.get("vault_name", db_name) if meta else db_name
     try:
         client.compact_vault(db_name)
+        client.log_audit_event("vault.compact", actor=_current_user(), target=db_name, details={"vault_name": vault_name})
         flash(f"Compaction started for '{vault_name}'.", "success")
     except CouchDBError as e:
         current_app.logger.error(f"Error trying to compact vault '{vault_name}': {str(e)}")
@@ -466,6 +485,7 @@ def vault_delete(db_name):
     vault_name = meta.get("vault_name", db_name) if meta else db_name
     try:
         client.delete_vault(db_name)
+        client.log_audit_event("vault.delete", actor=_current_user(), target=db_name, details={"vault_name": vault_name})
         flash(f"Vault '{vault_name}' deleted.", "success")
     except CouchDBError as e:
         current_app.logger.error(f"Error when trying to delete vault '{vault_name}': {str(e)}")
@@ -507,6 +527,7 @@ def vault_setup_uri(db_name):
                 passphrase=request.form.get("passphrase") or None,
                 uri_passphrase=request.form.get("uri_passphrase") or None,
             )
+            client.log_audit_event("vault.setup_uri", actor=_current_user(), target=db_name, details={"vault_name": vault_name})
         except CouchDBError as e:
             current_app.logger.error(f"Error when generating Setup URI for '{vault_name}': {str(e)}")
             flash(str(e), "error")
@@ -530,6 +551,7 @@ def settings():
             default_max_vaults = int(max_vaults_raw) if max_vaults_raw else None
             default_max_vault_size_bytes = int(max_size_raw) if max_size_raw else None
             client.set_server_settings(default_max_vaults, default_max_vault_size_bytes)
+            client.log_audit_event("settings.update", actor=_current_user(), details={"default_max_vaults": default_max_vaults, "default_max_vault_size_bytes": default_max_vault_size_bytes})
             flash("Server settings updated.", "success")
         except (CouchDBError, ValueError) as e:
             current_app.logger.error(f"Error updating server settings: {str(e)}")
@@ -565,9 +587,27 @@ def provision():
             result = client.generate_setup_uri(username, user_password, db_name)
             result["db_name"] = db_name
             result["username"] = username
+            client.log_audit_event("provision", actor=_current_user(), target=username, details={"vault_name": vault_name, "db_name": db_name})
             flash(f"Provisioned '{username}' with vault '{vault_name}'.", "success")
         except (CouchDBError, ValidationError) as e:
             current_app.logger.error(f"Error when provisioning new vault '{vault_name}' for user '{username}': {str(e)}")
             flash(str(e), "error")
 
     return render_template("provision.html", result=result)
+
+
+# ---------------------------------------------------------------------------
+# Audit log (admin only)
+# ---------------------------------------------------------------------------
+
+@index.route("/audit")
+@admin_required
+def audit_log():
+    client = _get_client()
+    try:
+        events = client.list_audit_log(limit=200)
+    except CouchDBError as e:
+        current_app.logger.error(f"Error fetching audit log: {str(e)}")
+        flash(str(e), "error")
+        events = []
+    return render_template("audit.html", events=events)
