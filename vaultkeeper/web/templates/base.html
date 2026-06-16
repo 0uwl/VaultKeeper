@@ -1,10 +1,20 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dim">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}VaultKeeper{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+  <script>
+    (function () {
+      var t = localStorage.getItem('vk-theme') || 'dim';
+      document.documentElement.setAttribute('data-theme', t);
+      window.setTheme = function (name) {
+        localStorage.setItem('vk-theme', name);
+        document.documentElement.setAttribute('data-theme', name);
+      };
+    })();
+  </script>
   <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
   <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 </head>
@@ -59,6 +69,30 @@
         <li><a href="{{ url_for('main.settings') }}" class="{{ 'active' if request.endpoint == 'main.settings' else '' }}">Settings</a></li>
         <li><a href="{{ url_for('audit.audit_log') }}" class="{{ 'active' if request.endpoint == 'audit.audit_log' else '' }}">Audit</a></li>
         {% endif %}
+      </ul>
+    </div>
+
+    {# Theme picker — visible on all screen sizes #}
+    <div class="flex-none relative"
+         x-data="{
+           open: false,
+           active: localStorage.getItem('vk-theme') || 'dim',
+           pick(name) { this.active = name; this.open = false; window.setTheme(name); }
+         }"
+         @click.outside="open = false">
+      <button @click="open = !open" class="btn btn-ghost btn-sm btn-square" title="Change theme">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+          <path d="M4 2a2 2 0 00-2 2v11a3 3 0 106 0V4a2 2 0 00-2-2H4zm1 14a1 1 0 110-2 1 1 0 010 2zm5-1.757l4.9-4.9a2 2 0 000-2.828L13.485 5.1a2 2 0 00-2.828 0L10 5.757v8.486zM16 18H9.071l6-6H16a2 2 0 012 2v2a2 2 0 01-2 2z"/>
+        </svg>
+      </button>
+      <ul x-show="open" x-cloak x-transition
+          class="absolute right-0 top-full mt-1 z-50 menu bg-base-200 border border-base-300 rounded-box shadow-lg w-36 p-1">
+        <li><a @click="pick('dim')"    :class="active === 'dim'    ? 'active' : ''">Dim</a></li>
+        <li><a @click="pick('night')"  :class="active === 'night'  ? 'active' : ''">Night</a></li>
+        <li><a @click="pick('dark')"   :class="active === 'dark'   ? 'active' : ''">Dark</a></li>
+        <li><a @click="pick('light')"  :class="active === 'light'  ? 'active' : ''">Light</a></li>
+        <li><a @click="pick('winter')" :class="active === 'winter' ? 'active' : ''">Winter</a></li>
+        <li><a @click="pick('nord')"   :class="active === 'nord'   ? 'active' : ''">Nord</a></li>
       </ul>
     </div>
 
