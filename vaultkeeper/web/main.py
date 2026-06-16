@@ -28,11 +28,20 @@ def dashboard():
     if not _is_admin():
         username = _current_user()
         try:
-            vaults = client.list_vaults_for_user(username)
+            vaults_basic = client.list_vaults_for_user(username)
         except CouchDBError as e:
             current_app.logger.error(f"Error fetching vaults for '{username}': {str(e)}")
             flash(str(e), "error")
-            vaults = []
+            vaults_basic = []
+        vaults = []
+        for v in vaults_basic:
+            try:
+                info = client.vault_info(v["db_name"])
+                info["db_name"] = info["name"]
+                vaults.append(info)
+            except CouchDBError as e:
+                current_app.logger.error(f"Error fetching info for vault '{v['db_name']}': {str(e)}")
+                vaults.append({**v, "doc_count": None, "data_size": None})
         return render_template("user_dashboard.html", username=username, vaults=vaults)
 
     try:
