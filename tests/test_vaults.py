@@ -1,6 +1,6 @@
 import pytest
 
-from vaultkeeper.client import CouchDB, CouchDBError, ValidationError
+from vaultkeeper.client import CouchDB, CouchDBError, ValidationError, validate_db_name
 
 
 # ---------------------------------------------------------------------------
@@ -42,6 +42,22 @@ def test_invalid_vault_name_raises(couchdb_client: CouchDB, managed_user, bad_na
     username, _ = managed_user
     with pytest.raises(ValidationError):
         couchdb_client.create_vault(username, bad_name)
+
+
+def test_vault_name_at_max_length_allowed(couchdb_client: CouchDB, managed_user):
+    username, _ = managed_user
+    name = "a" * 100
+    db_name = couchdb_client.create_vault(username, name)
+    try:
+        assert couchdb_client.db_exists(db_name)
+    finally:
+        couchdb_client.delete_vault(db_name)
+
+
+def test_vault_name_over_max_length_raises(couchdb_client: CouchDB, managed_user):
+    username, _ = managed_user
+    with pytest.raises(ValidationError, match="100 characters"):
+        couchdb_client.create_vault(username, "a" * 101)
 
 
 def test_vault_names_can_be_freeform(couchdb_client: CouchDB, managed_user):
@@ -86,6 +102,41 @@ def test_vault_not_in_other_users_list(couchdb_client: CouchDB, managed_vault):
     _, _, db_name = managed_vault
     db_names = [v["db_name"] for v in couchdb_client.list_vaults_for_user("no_such_user_xyzzy")]
     assert db_name not in db_names
+
+
+def test_multiple_vaults_for_user_all_listed(couchdb_client: CouchDB, managed_user):
+    username, _ = managed_user
+    db1 = couchdb_client.create_vault(username, "vault_one")
+    db2 = couchdb_client.create_vault(username, "vault_two")
+    try:
+        db_names = [v["db_name"] for v in couchdb_client.list_vaults_for_user(username)]
+        assert db1 in db_names
+        assert db2 in db_names
+    finally:
+        couchdb_client.delete_vault(db1)
+        couchdb_client.delete_vault(db2)
+
+
+# ---------------------------------------------------------------------------
+# find_vault_by_name
+# ---------------------------------------------------------------------------
+
+def test_find_vault_by_name_returns_db_name(couchdb_client: CouchDB, managed_vault):
+    username, _, db_name = managed_vault
+    result = couchdb_client.find_vault_by_name(username, "testvault")
+    assert result == db_name
+
+
+def test_find_vault_by_name_nonexistent_returns_none(couchdb_client: CouchDB, managed_user):
+    username, _ = managed_user
+    result = couchdb_client.find_vault_by_name(username, "no_such_vault")
+    assert result is None
+
+
+def test_find_vault_by_name_wrong_user_returns_none(couchdb_client: CouchDB, managed_vault):
+    _, _, db_name = managed_vault
+    result = couchdb_client.find_vault_by_name("no_such_user_xyzzy", "testvault")
+    assert result is None
 
 
 # ---------------------------------------------------------------------------
@@ -150,3 +201,53 @@ def test_deleted_vault_absent_from_all_vaults(couchdb_client: CouchDB, managed_u
 def test_delete_nonexistent_vault_raises(couchdb_client: CouchDB):
     with pytest.raises(CouchDBError, match="does not exist"):
         couchdb_client.delete_vault("vault_nobody_nowhere")
+
+
+def test_deleted_vault_absent_from_user_list(couchdb_client: CouchDB, managed_user):
+    username, _ = managed_user
+    db_name = couchdb_client.create_vault(username, "todelete3")
+    couchdb_client.delete_vault(db_name)
+    db_names = [v["db_name"] for v in couchdb_client.list_vaults_for_user(username)]
+    assert db_name not in db_names
+
+
+# ---------------------------------------------------------------------------
+# Security document
+# ---------------------------------------------------------------------------
+
+def test_vault_security_document_restricts_to_owner(couchdb_client: CouchDB, managed_vault):
+    username, _, db_name = managed_vault
+    r = couchdb_client._session.get(couchdb_client._url(db_name, "_security"))
+    assert r.status_code == 200
+    sec = r.json()
+    assert username in sec["admins"]["names"]
+    assert username in sec["members"]["names"]
+
+
+# ---------------------------------------------------------------------------
+# validate_db_name utility
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("name", [
+    "mydb",
+    "vault_alice_notes",
+    "a1b2c3",
+    "db$with$dollar",
+    "db-with-hyphens",
+    "db/with/slashes",
+])
+def test_validate_db_name_valid(name: str):
+    validate_db_name(name)  # must not raise
+
+
+@pytest.mark.parametrize("bad_name", [
+    "MyDB",          # uppercase not allowed
+    "1startswithdigit",
+    "_starts_underscore",
+    "has space",
+    "has@symbol",
+    "",
+])
+def test_validate_db_name_invalid(bad_name: str):
+    with pytest.raises(ValidationError):
+        validate_db_name(bad_name)

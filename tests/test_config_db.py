@@ -82,6 +82,22 @@ class TestInvitations:
         with pytest.raises(CouchDBError):
             couchdb_client.delete_invitation("nonexistent-token")
 
+    def test_consume_nonexistent_invitation_raises(self, couchdb_client: CouchDB):
+        with pytest.raises(CouchDBError):
+            couchdb_client.consume_invitation("nonexistent-token", "alice")
+
+    def test_consumed_invitation_not_returned_by_get(self, couchdb_client: CouchDB):
+        token = couchdb_client.create_invitation()
+        couchdb_client.consume_invitation(token, "alice")
+        assert couchdb_client.get_invitation(token) is None
+        couchdb_client.delete_invitation(token)
+
+    def test_create_invitation_with_custom_expiry(self, couchdb_client: CouchDB):
+        token = couchdb_client.create_invitation(expiry_hours=1)
+        doc = couchdb_client.get_invitation(token)
+        assert doc is not None
+        couchdb_client.delete_invitation(token)
+
 
 # ---------------------------------------------------------------------------
 # User limits tests
@@ -178,6 +194,16 @@ class TestEffectiveLimits:
         assert effective["max_vaults"] is None
         assert effective["max_vault_size_bytes"] is None
 
+    def test_partial_override_per_user_vaults_server_size(self, couchdb_client: CouchDB, managed_user):
+        username, _ = managed_user
+        couchdb_client.set_server_settings(default_max_vaults=5, default_max_vault_size_bytes=2_000_000)
+        couchdb_client.set_user_limits(username, max_vaults=99, max_vault_size_bytes=None)
+        effective = couchdb_client.get_effective_limits(username)
+        assert effective["max_vaults"] == 99
+        assert effective["max_vault_size_bytes"] == 2_000_000
+        # cleanup
+        couchdb_client.set_server_settings(None, None)
+
 
 # ---------------------------------------------------------------------------
 # User authentication tests
@@ -194,3 +220,62 @@ class TestAuthentication:
 
     def test_nonexistent_user(self, couchdb_client: CouchDB):
         assert couchdb_client.authenticate_user("no_such_user_xyz", "anypassword") is False
+
+
+# ---------------------------------------------------------------------------
+# Audit log tests
+# ---------------------------------------------------------------------------
+
+class TestAuditLog:
+    def test_log_audit_event_does_not_raise(self, couchdb_client: CouchDB):
+        couchdb_client.log_audit_event("test.action", actor="pytest")
+
+    def test_logged_event_appears_in_list(self, couchdb_client: CouchDB):
+        couchdb_client.log_audit_event("test.sentinel_event", actor="pytest", target="sentinel")
+        events = couchdb_client.list_audit_log()
+        actions = [e["action"] for e in events]
+        assert "test.sentinel_event" in actions
+
+    def test_logged_event_has_expected_fields(self, couchdb_client: CouchDB):
+        couchdb_client.log_audit_event("test.field_check", actor="pytest_actor",
+                                       target="some_target", details={"key": "val"})
+        events = couchdb_client.list_audit_log()
+        match = next((e for e in events if e["action"] == "test.field_check"), None)
+        assert match is not None
+        assert match["actor"] == "pytest_actor"
+        assert match["target"] == "some_target"
+        assert match["details"] == {"key": "val"}
+        assert "timestamp" in match
+
+    def test_list_audit_log_returns_newest_first(self, couchdb_client: CouchDB):
+        import time
+        couchdb_client.log_audit_event("test.order_first", actor="pytest")
+        time.sleep(0.01)
+        couchdb_client.log_audit_event("test.order_second", actor="pytest")
+        events = couchdb_client.list_audit_log()
+        actions = [e["action"] for e in events]
+        idx_first = next((i for i, a in enumerate(actions) if a == "test.order_first"), None)
+        idx_second = next((i for i, a in enumerate(actions) if a == "test.order_second"), None)
+        assert idx_second is not None and idx_first is not None
+        assert idx_second < idx_first  # newer (second) appears before older (first)
+
+    def test_purge_audit_events_removes_events(self, couchdb_client: CouchDB):
+        couchdb_client.log_audit_event("test.to_purge", actor="pytest")
+        events = couchdb_client.list_audit_log()
+        to_purge = [(e["_id"], e["_rev"]) for e in events if e["action"] == "test.to_purge"]
+        assert len(to_purge) > 0
+        deleted = couchdb_client.purge_audit_events(to_purge)
+        assert deleted == len(to_purge)
+        remaining = [e for e in couchdb_client.list_audit_log() if e["action"] == "test.to_purge"]
+        assert len(remaining) == 0
+
+    def test_purge_empty_list_returns_zero(self, couchdb_client: CouchDB):
+        assert couchdb_client.purge_audit_events([]) == 0
+
+    def test_audit_event_with_no_target_or_details(self, couchdb_client: CouchDB):
+        couchdb_client.log_audit_event("test.minimal", actor="pytest")
+        events = couchdb_client.list_audit_log()
+        match = next((e for e in events if e["action"] == "test.minimal"), None)
+        assert match is not None
+        assert match["target"] is None
+        assert match["details"] == {}

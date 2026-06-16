@@ -46,6 +46,18 @@ def test_change_password(couchdb_client: CouchDB, managed_user):
     assert couchdb_client.user_exists(username)
 
 
+def test_change_password_new_password_authenticates(couchdb_client: CouchDB, managed_user):
+    username, old_password = managed_user
+    couchdb_client.change_password(username, "new_password_789")
+    assert couchdb_client.authenticate_user(username, "new_password_789") is True
+
+
+def test_change_password_old_password_rejected(couchdb_client: CouchDB, managed_user):
+    username, old_password = managed_user
+    couchdb_client.change_password(username, "new_password_789")
+    assert couchdb_client.authenticate_user(username, old_password) is False
+
+
 def test_change_password_nonexistent_user_raises(couchdb_client: CouchDB):
     with pytest.raises(CouchDBError, match="does not exist"):
         couchdb_client.change_password("no_such_user_xyzzy", "pass")
