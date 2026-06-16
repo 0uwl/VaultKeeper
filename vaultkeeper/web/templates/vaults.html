@@ -2,12 +2,12 @@
 {% block title %}Vaults - VaultKeeper{% endblock %}
 
 {% block content %}
-<h1 class="h3 mb-4">Vaults</h1>
+<h1 class="text-2xl font-bold mb-5">Vaults</h1>
 
 {% if vaults %}
-<div class="table-responsive mb-4">
-  <table class="table table-hover align-middle">
-    <thead class="table-dark">
+<div class="overflow-x-auto mb-5">
+  <table class="table">
+    <thead>
       <tr>
         <th>Vault</th>
         <th class="text-end">Actions</th>
@@ -17,21 +17,27 @@
       {% for vault in vaults %}
       <tr>
         <td>
-          <a href="{{ url_for('vaults.vault_detail', db_name=vault.db_name) }}" class="text-decoration-none fw-semibold">
+          <a href="{{ url_for('vaults.vault_detail', db_name=vault.db_name) }}" class="link link-hover font-semibold">
             {{ vault.vault_name }}
           </a>
-          {% if session.is_admin %}<div class="small text-secondary font-monospace">{{ vault.db_name }}</div>{% endif %}
+          {% if session.is_admin %}
+          <div class="text-xs text-base-content/40 font-mono">{{ vault.db_name }}</div>
+          {% endif %}
         </td>
         <td class="text-end">
-          <a href="{{ url_for('vaults.vault_detail', db_name=vault.db_name) }}"
-             class="btn btn-sm btn-outline-secondary me-1">View</a>
-          <a href="{{ url_for('vaults.vault_setup_uri', db_name=vault.db_name) }}"
-             class="btn btn-sm btn-outline-primary me-1">Setup URI</a>
-          <form method="post" action="{{ url_for('vaults.vault_delete', db_name=vault.db_name) }}"
-                class="d-inline"
-                onsubmit="return confirm('Delete vault {{ vault.vault_name }}? ALL DATA WILL BE LOST.')">
-            <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
-          </form>
+          <div class="flex justify-end gap-2">
+            <a href="{{ url_for('vaults.vault_detail', db_name=vault.db_name) }}" class="btn btn-xs btn-ghost">View</a>
+            <a href="{{ url_for('vaults.vault_setup_uri', db_name=vault.db_name) }}" class="btn btn-xs btn-outline btn-primary">Setup URI</a>
+            <button type="button" class="btn btn-xs btn-error btn-outline" x-data
+              @click="$dispatch('vk:confirm', {
+                title: 'Delete vault',
+                message: 'Delete vault {{ vault.vault_name }}? ALL DATA WILL BE LOST.',
+                onConfirm: () => document.getElementById('del-vault-{{ vault.db_name }}').requestSubmit()
+              })">Delete</button>
+            <form id="del-vault-{{ vault.db_name }}"
+                  method="post" action="{{ url_for('vaults.vault_delete', db_name=vault.db_name) }}"
+                  class="hidden"></form>
+          </div>
         </td>
       </tr>
       {% endfor %}
@@ -39,47 +45,40 @@
   </table>
 </div>
 {% else %}
-<p class="text-secondary">No vaults yet.</p>
+<p class="text-base-content/50 mb-5">No vaults yet.</p>
 {% endif %}
 
-<div class="card">
-  <div class="card-header">Create vault</div>
+<div class="card bg-base-200">
   <div class="card-body">
-    <p class="text-secondary small mb-3">
+    <h2 class="card-title text-base">Create vault</h2>
+    <p class="text-base-content/50 text-sm mb-3">
       {% if session.is_admin %}The user must already exist.{% endif %}
       Vault names can be any text up to 100 characters.
     </p>
     <form method="post">
-      <div class="row g-3">
+      <div class="flex flex-wrap gap-3 items-end">
         {% if session.is_admin %}
-        <div class="col-md-4">
-          <label for="username" class="form-label">Username</label>
+        <div class="flex-1 min-w-28">
+          <label class="block text-sm font-medium mb-1.5" for="username">Username</label>
           <input id="username" name="username" type="text"
-                 class="form-control" placeholder="alice" required>
+                 class="input input-bordered w-full input-sm" placeholder="alice" required>
         </div>
-        <div class="col-md-4">
-        {% else %}
-        <div class="col-md-6">
         {% endif %}
-          <label for="vault_name" class="form-label">Vault name</label>
+        <div class="flex-1 min-w-28">
+          <label class="block text-sm font-medium mb-1.5" for="vault_name">Vault name</label>
           <input id="vault_name" name="vault_name" type="text"
-                 class="form-control" placeholder="notes" required>
+                 class="input input-bordered w-full input-sm" placeholder="notes" required>
         </div>
-        {% if session.is_admin %}
-        <div class="col-md-4 d-flex align-items-end">
-        {% else %}
-        <div class="col-md-6 d-flex align-items-end">
-        {% endif %}
-          <button type="submit" class="btn btn-primary w-100">Create vault</button>
-        </div>
+        <button type="submit" class="btn btn-primary btn-sm">Create vault</button>
       </div>
     </form>
   </div>
 </div>
 
-<div class="alert alert-secondary mt-4 small">
-  <strong>Privacy tip:</strong> Enable end-to-end encryption in the LiveSync plugin to ensure vault
-  contents are encrypted before leaving your device. Even the server operator cannot read encrypted
-  vault data.
+<div class="alert alert-info mt-4 text-sm">
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-5 h-5">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+  </svg>
+  <span><strong>Privacy tip:</strong> Enable end-to-end encryption in the LiveSync plugin to ensure vault contents are encrypted before leaving your device.</span>
 </div>
 {% endblock %}

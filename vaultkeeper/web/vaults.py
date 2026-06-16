@@ -6,6 +6,8 @@ from vaultkeeper.web.helpers import (
     _is_admin,
     _current_user,
     _owns_vault,
+    is_htmx,
+    htmx_response,
     login_required,
     admin_required,
 )
@@ -96,9 +98,13 @@ def vault_compact(db_name):
     try:
         client.compact_vault(db_name)
         client.log_audit_event("vault.compact", actor=_current_user(), target=db_name, details={"vault_name": vault_name})
+        if is_htmx():
+            return htmx_response(toast={"message": f"Compaction started for '{vault_name}'.", "type": "success"})
         flash(f"Compaction started for '{vault_name}'.", "success")
     except CouchDBError as e:
         current_app.logger.error(f"Error trying to compact vault '{vault_name}': {str(e)}")
+        if is_htmx():
+            return htmx_response(status=422, toast={"message": str(e), "type": "error"})
         flash(str(e), "error")
     return redirect(url_for("vaults.vault_detail", db_name=db_name))
 

@@ -2,85 +2,73 @@
 {% block title %}Dashboard - VaultKeeper{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <h1 class="h3 mb-0">Dashboard</h1>
+<div class="flex justify-between items-center mb-6">
+  <h1 class="text-2xl font-bold">Dashboard</h1>
 </div>
 
-<div class="row g-3 mb-4">
-  <div class="col-sm-4">
-    <div class="card text-center h-100">
-      <div class="card-body">
-        <div class="display-5 fw-bold">{{ user_count }}</div>
-        <div class="text-secondary">Users</div>
-        <a href="{{ url_for('users.users_list') }}" class="stretched-link text-decoration-none">
-          <small>Manage users →</small>
-        </a>
-      </div>
+<div class="stats stats-vertical sm:stats-horizontal shadow-sm bg-base-200 w-full mb-6">
+  <div class="stat">
+    <div class="stat-title">Users</div>
+    <div class="stat-value">{{ user_count }}</div>
+    <div class="stat-desc">
+      <a href="{{ url_for('users.users_list') }}" class="link link-hover">Manage users →</a>
     </div>
   </div>
-  <div class="col-sm-4">
-    <div class="card text-center h-100">
-      <div class="card-body">
-        <div class="display-5 fw-bold">{{ vault_count }}</div>
-        <div class="text-secondary">Vaults</div>
-        <a href="{{ url_for('vaults.vaults_list') }}" class="stretched-link text-decoration-none">
-          <small>Manage vaults →</small>
-        </a>
-      </div>
+  <div class="stat">
+    <div class="stat-title">Vaults</div>
+    <div class="stat-value">{{ vault_count }}</div>
+    <div class="stat-desc">
+      <a href="{{ url_for('vaults.vaults_list') }}" class="link link-hover">Manage vaults →</a>
     </div>
   </div>
-  <div class="col-sm-4">
-    <div class="card text-center h-100">
-      <div class="card-body">
-        {% if server_info %}
-          <div class="display-5 fw-bold">{{ server_info.version }}</div>
-          <div class="text-secondary">CouchDB version</div>
-          <span class="badge bg-success">online</span>
-        {% else %}
-          <div class="display-5 fw-bold text-secondary">-</div>
-          <div class="text-secondary">CouchDB</div>
-          <span class="badge bg-danger">unreachable</span>
-        {% endif %}
-      </div>
-    </div>
+  <div class="stat">
+    <div class="stat-title">CouchDB</div>
+    {% if server_info %}
+      <div class="stat-value text-2xl">{{ server_info.version }}</div>
+      <div class="stat-desc"><span class="badge badge-success badge-sm">online</span></div>
+    {% else %}
+      <div class="stat-value text-2xl text-base-content/30">—</div>
+      <div class="stat-desc"><span class="badge badge-error badge-sm">unreachable</span></div>
+    {% endif %}
   </div>
 </div>
 
-<h2 class="h5 mb-3">Quick actions</h2>
-<div class="d-flex flex-wrap gap-2">
-  <a href="{{ url_for('vaults.provision') }}" class="btn btn-primary">Provision new user</a>
-  <a href="{{ url_for('users.users_list') }}" class="btn btn-outline-secondary">Manage users</a>
-  <a href="{{ url_for('vaults.vaults_list') }}" class="btn btn-outline-secondary">Manage vaults</a>
+<h2 class="text-base font-semibold mb-3">Quick actions</h2>
+<div class="flex flex-wrap gap-2 mb-8">
+  <a href="{{ url_for('vaults.provision') }}" class="btn btn-primary btn-sm">Provision new user</a>
+  <a href="{{ url_for('users.users_list') }}" class="btn btn-outline btn-sm">Manage users</a>
+  <a href="{{ url_for('vaults.vaults_list') }}" class="btn btn-outline btn-sm">Manage vaults</a>
 </div>
 
-<div class="d-flex justify-content-between align-items-center mt-4 mb-3">
-  <h2 class="h5 mb-0">Recent activity</h2>
-  <a href="{{ url_for('audit.audit_log') }}" class="btn btn-sm btn-outline-secondary">View full log</a>
+<div class="flex justify-between items-center mb-3">
+  <h2 class="text-base font-semibold">Recent activity</h2>
+  <a href="{{ url_for('audit.audit_log') }}" class="btn btn-ghost btn-xs">View full log →</a>
 </div>
+
 {% if recent_events %}
-<div class="table-responsive">
-  <table class="table table-sm table-hover mb-0">
+<div class="overflow-x-auto">
+  <table class="table table-sm">
     <thead>
       <tr>
-        <th class="text-secondary fw-normal">Time</th>
-        <th class="text-secondary fw-normal">Actor</th>
-        <th class="text-secondary fw-normal">Action</th>
-        <th class="text-secondary fw-normal">Target</th>
+        <th class="text-base-content/50 font-normal">Time</th>
+        <th class="text-base-content/50 font-normal">Actor</th>
+        <th class="text-base-content/50 font-normal">Action</th>
+        <th class="text-base-content/50 font-normal">Target</th>
       </tr>
     </thead>
     <tbody>
       {% for ev in recent_events %}
       <tr>
-        <td class="text-secondary text-nowrap"><small>{{ ev.timestamp[:19].replace('T', ' ') }} {{ ev.timestamp[26:] }}</small></td>
-        <td><small>{{ ev.actor }}</small></td>
-        <td><small><code>{{ ev.action }}</code></small></td>
-        <td class="text-secondary"><small>{{ ev.target or '' }}</small></td>
+        <td class="text-base-content/50 whitespace-nowrap text-xs">{{ ev.timestamp[:19].replace('T', ' ') }} {{ ev.timestamp[26:] }}</td>
+        <td class="text-sm">{{ ev.actor }}</td>
+        <td class="text-sm"><code class="text-xs">{{ ev.action }}</code></td>
+        <td class="text-base-content/50 text-sm">{{ ev.target or '' }}</td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
 </div>
 {% else %}
-<p class="text-secondary mb-0"><small>No events recorded yet.</small></p>
+<p class="text-base-content/50 text-sm">No events recorded yet.</p>
 {% endif %}
 {% endblock %}

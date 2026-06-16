@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Prevent flash of un-initialized Alpine content */
+[x-cloak] { display: none !important; }
+
+@layer components {
+  /* Monospace display for secrets and passphrases */
+  .vk-secret {
+    @apply font-mono text-sm break-all;
+  }
+  /* Truncated monospace display for setup URIs */
+  .vk-uri {
+    @apply font-mono text-xs opacity-60 whitespace-nowrap overflow-hidden text-ellipsis;
+  }
+}

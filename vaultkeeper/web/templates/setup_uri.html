@@ -2,89 +2,98 @@
 {% block title %}Setup URI - {{ db_name }} - VaultKeeper{% endblock %}
 
 {% block content %}
-<div class="d-flex align-items-center gap-3 mb-4">
-  <h1 class="h3 mb-0">Setup URI</h1>
-  <a href="{{ url_for('vaults.vault_detail', db_name=db_name) }}"
-     class="btn btn-sm btn-outline-secondary">← {{ db_name }}</a>
+<div class="flex items-center gap-3 mb-6">
+  <h1 class="text-2xl font-bold">Setup URI</h1>
+  <a href="{{ url_for('vaults.vault_detail', db_name=db_name) }}" class="btn btn-ghost btn-sm">← {{ db_name }}</a>
 </div>
 
 {% if not result %}
-<div class="card">
+<div class="card bg-base-200">
   <div class="card-body">
-    <p class="text-secondary mb-3">
+    <p class="text-base-content/60 text-sm mb-4">
       Generate an <code>obsidian://</code> deep link that configures the LiveSync plugin in one tap.
       Enter the <strong>vault user's password</strong> (not the admin password).
       Passphrases are auto-generated if left blank.
     </p>
     <form method="post">
-      <div class="mb-3">
-        <label for="user_password" class="form-label">
+      <div class="mb-4">
+        <label class="block text-sm font-medium mb-1.5" for="user_password">
           Password for <strong>{{ username }}</strong>
         </label>
         <input id="user_password" name="user_password" type="password"
-               class="form-control" required autofocus>
+               class="input input-bordered w-full" required autofocus>
       </div>
 
-      <div class="mb-3">
-        <a class="text-secondary small" data-bs-toggle="collapse" href="#advancedOptions">
-          Advanced options ▾
-        </a>
-        <div class="collapse mt-2" id="advancedOptions">
-          <div class="mb-2">
-            <label for="passphrase" class="form-label">
+      <div x-data="{ open: false }" class="mb-5">
+        <button type="button" class="text-base-content/50 text-sm hover:text-base-content transition-colors"
+                @click="open = !open">
+          Advanced options <span x-text="open ? '▴' : '▾'"></span>
+        </button>
+        <div x-show="open" x-transition class="mt-3 space-y-4">
+          <div>
+            <label class="block text-sm font-medium mb-1.5" for="passphrase">
               E2E passphrase
-              <span class="text-secondary small">(auto-generated if blank)</span>
+              <span class="text-base-content/40 font-normal">(auto-generated if blank)</span>
             </label>
             <input id="passphrase" name="passphrase" type="text"
-                   class="form-control" placeholder="auto-generated">
+                   class="input input-bordered w-full input-sm" placeholder="auto-generated">
           </div>
           <div>
-            <label for="uri_passphrase" class="form-label">
+            <label class="block text-sm font-medium mb-1.5" for="uri_passphrase">
               URI passphrase
-              <span class="text-secondary small">(auto-generated if blank)</span>
+              <span class="text-base-content/40 font-normal">(auto-generated if blank)</span>
             </label>
             <input id="uri_passphrase" name="uri_passphrase" type="text"
-                   class="form-control" placeholder="auto-generated">
+                   class="input input-bordered w-full input-sm" placeholder="auto-generated">
           </div>
         </div>
       </div>
 
-      <button type="submit" class="btn btn-primary">Generate URI</button>
+      <button type="submit" class="btn btn-primary btn-sm">Generate URI</button>
     </form>
   </div>
 </div>
 
 {% else %}
-<div class="alert alert-warning">
-  <strong>⚠ Save these passphrases now.</strong> Store them in your password manager - they cannot be recovered.
-  <dl class="row mt-2 mb-0">
-    {% if result.passphrase_generated %}
-    <dt class="col-sm-4">E2E passphrase <span class="badge bg-secondary">auto-generated</span></dt>
-    <dd class="col-sm-8"><code class="vk-secret">{{ result.passphrase }}</code></dd>
-    {% endif %}
-    {% if result.uri_passphrase and result.uri_passphrase_generated %}
-    <dt class="col-sm-4">URI passphrase <span class="badge bg-secondary">auto-generated</span></dt>
-    <dd class="col-sm-8"><code class="vk-secret">{{ result.uri_passphrase }}</code></dd>
-    {% endif %}
-  </dl>
+<div class="alert alert-warning mb-4">
+  <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+  </svg>
+  <div>
+    <div class="font-semibold mb-2">Save these passphrases now.</div>
+    <dl class="text-sm space-y-1">
+      {% if result.passphrase_generated %}
+      <div class="flex gap-2 flex-wrap">
+        <dt class="text-base-content/60">E2E passphrase <span class="badge badge-neutral badge-sm">auto-generated</span></dt>
+        <dd><code class="vk-secret">{{ result.passphrase }}</code></dd>
+      </div>
+      {% endif %}
+      {% if result.uri_passphrase and result.uri_passphrase_generated %}
+      <div class="flex gap-2 flex-wrap">
+        <dt class="text-base-content/60">URI passphrase <span class="badge badge-neutral badge-sm">auto-generated</span></dt>
+        <dd><code class="vk-secret">{{ result.uri_passphrase }}</code></dd>
+      </div>
+      {% endif %}
+    </dl>
+  </div>
 </div>
 
-<div class="card mb-3">
-  <div class="card-header">Setup URI</div>
+<div class="card bg-base-200 mb-4">
   <div class="card-body">
-    <p class="text-secondary small mb-2">
+    <h2 class="card-title text-base">Setup URI</h2>
+    <p class="text-base-content/50 text-sm mb-3">
       In Obsidian: command palette →
       <em>Self-hosted LiveSync: Use the copied setup URI</em>
-      {% if result.uri_passphrase %} - enter the URI passphrase above when prompted.{% endif %}
+      {% if result.uri_passphrase %} — enter the URI passphrase above when prompted.{% endif %}
     </p>
-    <div class="input-group">
-      <code class="form-control vk-uri" id="setup-uri">{{ result.uri }}</code>
-      <button class="btn btn-outline-secondary" type="button" onclick="copyUri()">Copy</button>
+    <div class="join w-full">
+      <code class="input input-bordered join-item flex-1 vk-uri items-center flex" id="setup-uri">{{ result.uri }}</code>
+      <button class="btn btn-outline join-item btn-sm" type="button" onclick="copyUri()">Copy</button>
     </div>
   </div>
 </div>
 
-<a href="{{ url_for('vaults.vault_setup_uri', db_name=db_name) }}" class="btn btn-outline-secondary">
+<a href="{{ url_for('vaults.vault_setup_uri', db_name=db_name) }}" class="btn btn-ghost btn-sm">
   Generate another URI
 </a>
 

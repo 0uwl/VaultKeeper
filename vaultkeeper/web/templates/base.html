@@ -1,75 +1,179 @@
 <!DOCTYPE html>
-<html lang="en" data-bs-theme="dark">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}VaultKeeper{% endblock %}</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+  <script>
+    (function () {
+      var t = localStorage.getItem('vk-theme') || 'dim';
+      document.documentElement.setAttribute('data-theme', t);
+      window.setTheme = function (name) {
+        localStorage.setItem('vk-theme', name);
+        document.documentElement.setAttribute('data-theme', name);
+      };
+    })();
+  </script>
+  <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
+  <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 </head>
-<body>
+<body class="min-h-screen bg-base-100" hx-boost="true">
+
   {% if session.logged_in %}
-  <nav class="navbar navbar-expand-md navbar-dark bg-dark border-bottom border-secondary mb-4">
-    <div class="container-lg">
-      <a class="navbar-brand fw-bold" href="{{ url_for('main.dashboard') }}">VaultKeeper</a>
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
-        <span class="navbar-toggler-icon"></span>
-      </button>
-      <div class="collapse navbar-collapse" id="navMenu">
-        <ul class="navbar-nav me-auto">
-          <li class="nav-item">
-            <a class="nav-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}"
-               href="{{ url_for('main.dashboard') }}">Dashboard</a>
-          </li>
+  <nav class="navbar bg-base-200 border-b border-base-300 px-4 sticky top-0 z-40">
+
+    {# Mobile: hamburger #}
+    <div class="flex-none md:hidden">
+      <details class="dropdown">
+        <summary class="btn btn-ghost btn-sm btn-square">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-5 h-5 stroke-current">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+          </svg>
+        </summary>
+        <ul class="menu menu-sm dropdown-content mt-3 z-50 p-2 shadow-lg bg-base-200 border border-base-300 rounded-box w-48">
+          <li><a href="{{ url_for('main.dashboard') }}" class="{{ 'active' if request.endpoint == 'main.dashboard' else '' }}">Dashboard</a></li>
           {% if session.is_admin %}
-          <li class="nav-item">
-            <a class="nav-link {% if request.endpoint in ('users.users_list', 'users.user_detail', 'auth.invitations', 'auth.invitation_delete') %}active{% endif %}"
-               href="{{ url_for('users.users_list') }}">Users</a>
-          </li>
+          <li><a href="{{ url_for('users.users_list') }}" class="{{ 'active' if request.endpoint in ('users.users_list', 'users.user_detail', 'auth.invitations', 'auth.invitation_delete') else '' }}">Users</a></li>
           {% endif %}
-          <li class="nav-item">
-            <a class="nav-link {% if request.endpoint in ('vaults.vaults_list', 'vaults.vault_detail', 'vaults.vault_setup_uri') %}active{% endif %}"
-               href="{{ url_for('vaults.vaults_list') }}">Vaults</a>
-          </li>
+          <li><a href="{{ url_for('vaults.vaults_list') }}" class="{{ 'active' if request.endpoint in ('vaults.vaults_list', 'vaults.vault_detail', 'vaults.vault_setup_uri') else '' }}">Vaults</a></li>
           {% if session.is_admin %}
-          <li class="nav-item">
-            <a class="nav-link {% if request.endpoint == 'vaults.provision' %}active{% endif %}"
-               href="{{ url_for('vaults.provision') }}">Provision</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link {% if request.endpoint == 'main.settings' %}active{% endif %}"
-               href="{{ url_for('main.settings') }}">Settings</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link {% if request.endpoint == 'audit.audit_log' %}active{% endif %}"
-               href="{{ url_for('audit.audit_log') }}">Audit</a>
-          </li>
+          <li><a href="{{ url_for('vaults.provision') }}" class="{{ 'active' if request.endpoint == 'vaults.provision' else '' }}">Provision</a></li>
+          <li><a href="{{ url_for('main.settings') }}" class="{{ 'active' if request.endpoint == 'main.settings' else '' }}">Settings</a></li>
+          <li><a href="{{ url_for('audit.audit_log') }}" class="{{ 'active' if request.endpoint == 'audit.audit_log' else '' }}">Audit</a></li>
           {% endif %}
+          <li>
+            <form action="{{ url_for('auth.logout') }}" method="post" class="p-0">
+              <button type="submit" class="w-full text-left">Logout</button>
+            </form>
+          </li>
         </ul>
-        <form action="{{ url_for('auth.logout') }}" method="post" class="d-flex">
-          <button type="submit" class="btn btn-outline-secondary btn-sm">Logout</button>
-        </form>
-      </div>
+      </details>
     </div>
+
+    {# Brand #}
+    <div class="flex-1 md:flex-none">
+      <a href="{{ url_for('main.dashboard') }}" class="btn btn-ghost font-bold text-base px-2">VaultKeeper</a>
+    </div>
+
+    {# Desktop nav links #}
+    <div class="flex-1 hidden md:flex">
+      <ul class="menu menu-horizontal gap-0.5 px-2 text-sm">
+        <li><a href="{{ url_for('main.dashboard') }}" class="{{ 'active' if request.endpoint == 'main.dashboard' else '' }}">Dashboard</a></li>
+        {% if session.is_admin %}
+        <li><a href="{{ url_for('users.users_list') }}" class="{{ 'active' if request.endpoint in ('users.users_list', 'users.user_detail', 'auth.invitations', 'auth.invitation_delete') else '' }}">Users</a></li>
+        {% endif %}
+        <li><a href="{{ url_for('vaults.vaults_list') }}" class="{{ 'active' if request.endpoint in ('vaults.vaults_list', 'vaults.vault_detail', 'vaults.vault_setup_uri') else '' }}">Vaults</a></li>
+        {% if session.is_admin %}
+        <li><a href="{{ url_for('vaults.provision') }}" class="{{ 'active' if request.endpoint == 'vaults.provision' else '' }}">Provision</a></li>
+        <li><a href="{{ url_for('main.settings') }}" class="{{ 'active' if request.endpoint == 'main.settings' else '' }}">Settings</a></li>
+        <li><a href="{{ url_for('audit.audit_log') }}" class="{{ 'active' if request.endpoint == 'audit.audit_log' else '' }}">Audit</a></li>
+        {% endif %}
+      </ul>
+    </div>
+
+    {# Theme picker — visible on all screen sizes #}
+    <div class="flex-none relative"
+         x-data="{
+           open: false,
+           active: localStorage.getItem('vk-theme') || 'dim',
+           pick(name) { this.active = name; this.open = false; window.setTheme(name); }
+         }"
+         @click.outside="open = false">
+      <button @click="open = !open" class="btn btn-ghost btn-sm btn-square" title="Change theme">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+          <path d="M4 2a2 2 0 00-2 2v11a3 3 0 106 0V4a2 2 0 00-2-2H4zm1 14a1 1 0 110-2 1 1 0 010 2zm5-1.757l4.9-4.9a2 2 0 000-2.828L13.485 5.1a2 2 0 00-2.828 0L10 5.757v8.486zM16 18H9.071l6-6H16a2 2 0 012 2v2a2 2 0 01-2 2z"/>
+        </svg>
+      </button>
+      <ul x-show="open" x-cloak x-transition
+          class="absolute right-0 top-full mt-1 z-50 menu bg-base-200 border border-base-300 rounded-box shadow-lg w-36 p-1">
+        <li><a @click="pick('dim')"    :class="active === 'dim'    ? 'active' : ''">Dim</a></li>
+        <li><a @click="pick('night')"  :class="active === 'night'  ? 'active' : ''">Night</a></li>
+        <li><a @click="pick('dark')"   :class="active === 'dark'   ? 'active' : ''">Dark</a></li>
+        <li><a @click="pick('light')"  :class="active === 'light'  ? 'active' : ''">Light</a></li>
+        <li><a @click="pick('winter')" :class="active === 'winter' ? 'active' : ''">Winter</a></li>
+        <li><a @click="pick('nord')"   :class="active === 'nord'   ? 'active' : ''">Nord</a></li>
+      </ul>
+    </div>
+
+    {# Desktop logout #}
+    <div class="flex-none hidden md:block">
+      <form action="{{ url_for('auth.logout') }}" method="post">
+        <button type="submit" class="btn btn-ghost btn-sm">Logout</button>
+      </form>
+    </div>
+
   </nav>
   {% endif %}
 
-  <div class="container-lg">
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-          </div>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
-
+  <main class="container mx-auto px-4 py-6 max-w-5xl">
     {% block content %}{% endblock %}
+  </main>
+
+  {# Toast container: shows both server-side flash messages and HTMX-triggered toasts #}
+  <div class="toast toast-end toast-bottom z-50 pointer-events-none"
+       x-data="{
+         toasts: [],
+         add(detail) {
+           const t = { id: Date.now(), message: detail.message, type: detail.type || 'success', show: true };
+           this.toasts.push(t);
+           setTimeout(() => {
+             t.show = false;
+             setTimeout(() => this.toasts = this.toasts.filter(x => x.id !== t.id), 300);
+           }, 4000);
+         }
+       }"
+       @show-toast.window="add($event.detail)">
+    <template x-for="t in toasts" :key="t.id">
+      <div class="pointer-events-auto"
+           :class="'alert ' + (t.type === 'success' ? 'alert-success' : t.type === 'error' ? 'alert-error' : t.type === 'warning' ? 'alert-warning' : 'alert-info')"
+           x-show="t.show" x-transition>
+        <span x-text="t.message"></span>
+      </div>
+    </template>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+      <div class="pointer-events-auto alert {{ 'alert-success' if category == 'success' else 'alert-error' if category == 'error' else 'alert-warning' if category == 'warning' else 'alert-info' }}"
+           x-data="{ show: true }"
+           x-show="show"
+           x-transition
+           x-init="setTimeout(() => show = false, 4000)">
+        <span>{{ message }}</span>
+      </div>
+      {% endfor %}
+    {% endwith %}
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  {# Global confirm modal — triggered via $dispatch('vk:confirm', { title, message, label, onConfirm }) #}
+  <dialog id="vk-confirm-modal" class="modal"
+          x-data="{
+            _el: null,
+            title: 'Confirm',
+            msg: '',
+            label: 'Delete',
+            btnClass: 'btn-error',
+            _cb: null
+          }"
+          x-init="_el = $el"
+          @vk:confirm.window="
+            title = $event.detail.title || 'Confirm';
+            msg = $event.detail.message || '';
+            label = $event.detail.label || 'Delete';
+            btnClass = $event.detail.btnClass || 'btn-error';
+            _cb = $event.detail.onConfirm || null;
+            _el.showModal()
+          ">
+    <div class="modal-box">
+      <h3 class="font-bold text-lg mb-2" x-text="title"></h3>
+      <p class="text-base-content/70 mb-4" x-text="msg"></p>
+      <div class="modal-action mt-0">
+        <button class="btn btn-ghost btn-sm" @click="_el.close()">Cancel</button>
+        <button :class="'btn btn-sm ' + btnClass" @click="_el.close(); _cb && _cb()" x-text="label"></button>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  </dialog>
+
   {% block scripts %}{% endblock %}
 </body>
 </html>

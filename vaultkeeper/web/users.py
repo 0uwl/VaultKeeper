@@ -7,6 +7,8 @@ from vaultkeeper.web.helpers import (
     _get_client,
     _is_admin,
     _current_user,
+    is_htmx,
+    htmx_response,
     login_required,
     admin_required,
 )
@@ -25,9 +27,18 @@ def users_list():
         try:
             client.create_user(username, password)
             client.log_audit_event("user.create", actor=_current_user(), target=username)
+            if is_htmx():
+                html = render_template("_partials/user_row.html", username=username)
+                return htmx_response(
+                    html,
+                    toast={"message": f"User '{username}' created.", "type": "success"},
+                    triggers={"clear-form": True},
+                )
             flash(f"User '{username}' created.", "success")
         except (CouchDBError, ValidationError) as e:
             current_app.logger.error(f"Error when creating user '{username}': {str(e)}")
+            if is_htmx():
+                return htmx_response(status=422, toast={"message": str(e), "type": "error"})
             flash(str(e), "error")
         return redirect(url_for("users.users_list"))
 
@@ -103,9 +114,13 @@ def user_delete(username):
     try:
         client.delete_user(username)
         client.log_audit_event("user.delete", actor=_current_user(), target=username)
+        if is_htmx():
+            return htmx_response(toast={"message": f"User '{username}' deleted.", "type": "success"})
         flash(f"User '{username}' deleted.", "success")
     except CouchDBError as e:
         current_app.logger.error(f"Error when deleting user '{username}': {str(e)}")
+        if is_htmx():
+            return htmx_response(status=422, toast={"message": str(e), "type": "error"})
         flash(str(e), "error")
     return redirect(url_for("users.users_list"))
 
