@@ -351,6 +351,16 @@ class CouchDB:
             raise CouchDBError(f"Failed to list audit log: {r.status_code} {r.text}")
         return [row["doc"] for row in r.json().get("rows", [])]
 
+    def purge_audit_events(self, id_rev_pairs: list[tuple[str, str]]) -> int:
+        """Bulk-delete audit documents. Returns the count successfully deleted."""
+        if not id_rev_pairs:
+            return 0
+        docs = [{"_id": doc_id, "_rev": rev, "_deleted": True} for doc_id, rev in id_rev_pairs]
+        r = self._session.post(self._url(CONFIG_DB, "_bulk_docs"), data=json.dumps({"docs": docs}))
+        if r.status_code not in (200, 201):
+            raise CouchDBError(f"Failed to delete audit events: {r.status_code} {r.text}")
+        return sum(1 for row in r.json() if not row.get("error"))
+
     def get_effective_limits(self, username: str) -> dict:
         """Return vault limits for a user, falling back to server defaults."""
         limits = self.get_user_limits(username)
