@@ -2,14 +2,46 @@
 {% block title %}Audit Log - VaultKeeper{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex justify-content-between align-items-center mb-3">
   <h1 class="h3 mb-0">Audit Log</h1>
-  <small class="text-secondary">Showing up to 200 most recent events</small>
+  <small class="text-secondary" id="audit-count">
+    Showing {{ events|length }} of {{ events|length }} events
+  </small>
+</div>
+
+<div class="card mb-4">
+  <div class="card-body py-2">
+    <div class="row g-2 align-items-end">
+      <div class="col-sm-6 col-md-2">
+        <label class="form-label mb-1 small text-secondary" for="f-from">From</label>
+        <input type="date" id="f-from" class="form-control form-control-sm">
+      </div>
+      <div class="col-sm-6 col-md-2">
+        <label class="form-label mb-1 small text-secondary" for="f-to">To</label>
+        <input type="date" id="f-to" class="form-control form-control-sm">
+      </div>
+      <div class="col-sm-4 col-md-2">
+        <label class="form-label mb-1 small text-secondary" for="f-actor">Actor</label>
+        <input type="text" id="f-actor" class="form-control form-control-sm" placeholder="e.g. alice">
+      </div>
+      <div class="col-sm-4 col-md-3">
+        <label class="form-label mb-1 small text-secondary" for="f-action">Action</label>
+        <input type="text" id="f-action" class="form-control form-control-sm" placeholder="e.g. vault.create">
+      </div>
+      <div class="col-sm-4 col-md-2">
+        <label class="form-label mb-1 small text-secondary" for="f-target">Target</label>
+        <input type="text" id="f-target" class="form-control form-control-sm" placeholder="e.g. vault_alice_notes">
+      </div>
+      <div class="col-auto">
+        <button type="button" id="f-clear" class="btn btn-outline-secondary btn-sm">Clear</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 {% if events %}
 <div class="table-responsive">
-  <table class="table table-sm table-hover">
+  <table class="table table-sm table-hover" id="audit-table">
     <thead>
       <tr>
         <th class="text-secondary fw-normal">Time</th>
@@ -21,7 +53,12 @@
     </thead>
     <tbody>
       {% for ev in events %}
-      <tr>
+      <tr
+        data-ts="{{ ev.timestamp[:10] }}"
+        data-actor="{{ ev.actor | lower }}"
+        data-action="{{ ev.action | lower }}"
+        data-target="{{ (ev.target or '') | lower }}"
+      >
         <td class="text-secondary text-nowrap"><small>{{ ev.timestamp[:19].replace('T', ' ') }} {{ ev.timestamp[26:] }}</small></td>
         <td><small>{{ ev.actor }}</small></td>
         <td><small><code>{{ ev.action }}</code></small></td>
@@ -38,7 +75,60 @@
     </tbody>
   </table>
 </div>
+<p class="text-secondary" id="audit-empty-msg" style="display:none">No events match the current filters.</p>
 {% else %}
 <p class="text-secondary">No audit events recorded yet.</p>
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const total = {{ events | length }};
+  const rows = Array.from(document.querySelectorAll('#audit-table tbody tr'));
+  const countEl = document.getElementById('audit-count');
+  const emptyMsg = document.getElementById('audit-empty-msg');
+
+  const inputs = {
+    from:   document.getElementById('f-from'),
+    to:     document.getElementById('f-to'),
+    actor:  document.getElementById('f-actor'),
+    action: document.getElementById('f-action'),
+    target: document.getElementById('f-target'),
+  };
+
+  function applyFilters() {
+    const from   = inputs.from.value;
+    const to     = inputs.to.value;
+    const actor  = inputs.actor.value.toLowerCase();
+    const action = inputs.action.value.toLowerCase();
+    const target = inputs.target.value.toLowerCase();
+
+    let visible = 0;
+    rows.forEach(function (row) {
+      const ts = row.dataset.ts;
+      const match =
+        (!from   || ts >= from) &&
+        (!to     || ts <= to)   &&
+        (!actor  || row.dataset.actor.includes(actor))   &&
+        (!action || row.dataset.action.includes(action)) &&
+        (!target || row.dataset.target.includes(target));
+      row.style.display = match ? '' : 'none';
+      if (match) visible++;
+    });
+
+    countEl.textContent = 'Showing ' + visible + ' of ' + total + ' events';
+    if (emptyMsg) emptyMsg.style.display = visible === 0 ? '' : 'none';
+  }
+
+  Object.values(inputs).forEach(function (el) {
+    el.addEventListener('input', applyFilters);
+  });
+
+  document.getElementById('f-clear').addEventListener('click', function () {
+    Object.values(inputs).forEach(function (el) { el.value = ''; });
+    applyFilters();
+  });
+})();
+</script>
 {% endblock %}
