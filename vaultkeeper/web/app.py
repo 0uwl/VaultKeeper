@@ -35,8 +35,16 @@ def create_app() -> Flask:
     app.logger.setLevel(logger.level)
     app.logger.propagate = False  # prevent double-logging to root
 
-    from vaultkeeper.web.index import index
-    app.register_blueprint(index)
+    from vaultkeeper.web.main import main
+    from vaultkeeper.web.auth import auth
+    from vaultkeeper.web.users import users
+    from vaultkeeper.web.vaults import vaults
+    from vaultkeeper.web.audit import audit
+    app.register_blueprint(main)
+    app.register_blueprint(auth)
+    app.register_blueprint(users)
+    app.register_blueprint(vaults)
+    app.register_blueprint(audit)
     
     try:
         with app.app_context():

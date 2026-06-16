@@ -40,7 +40,7 @@
 </div>
 
 {% if events %}
-<form method="post" action="{{ url_for('index.audit_delete') }}" id="audit-form">
+<form method="post" action="{{ url_for('audit.audit_delete') }}" id="audit-form">
   <div class="d-flex align-items-center gap-2 mb-2">
     <button type="button" id="btn-delete" class="btn btn-danger btn-sm" disabled>
       Delete selected (<span id="sel-count">0</span>)

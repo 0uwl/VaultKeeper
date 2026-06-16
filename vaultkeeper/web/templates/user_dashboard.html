@@ -20,16 +20,16 @@
       {% for vault in vaults %}
       <tr>
         <td>
-          <a href="{{ url_for('index.vault_detail', db_name=vault.db_name) }}" class="text-decoration-none fw-semibold">
+          <a href="{{ url_for('vaults.vault_detail', db_name=vault.db_name) }}" class="text-decoration-none fw-semibold">
             {{ vault.vault_name }}
           </a>
         </td>
         <td class="text-end">
-          <a href="{{ url_for('index.vault_detail', db_name=vault.db_name) }}"
+          <a href="{{ url_for('vaults.vault_detail', db_name=vault.db_name) }}"
              class="btn btn-sm btn-outline-secondary me-1">View</a>
-          <a href="{{ url_for('index.vault_setup_uri', db_name=vault.db_name) }}"
+          <a href="{{ url_for('vaults.vault_setup_uri', db_name=vault.db_name) }}"
              class="btn btn-sm btn-outline-primary me-1">Setup URI</a>
-          <form method="post" action="{{ url_for('index.vault_delete', db_name=vault.db_name) }}"
+          <form method="post" action="{{ url_for('vaults.vault_delete', db_name=vault.db_name) }}"
                 class="d-inline"
                 onsubmit="return confirm('Delete vault {{ vault.vault_name }}? ALL DATA WILL BE LOST.')">
             <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
@@ -50,7 +50,7 @@
     <p class="text-secondary small mb-3">
       Vault names can be any text up to 100 characters.
     </p>
-    <form method="post" action="{{ url_for('index.vaults') }}">
+    <form method="post" action="{{ url_for('vaults.vaults_list') }}">
       <div class="row g-3">
         <div class="col-md-6">
           <label for="vault_name" class="form-label">Vault name</label>

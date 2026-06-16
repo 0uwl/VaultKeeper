@@ -42,7 +42,7 @@
         </td>
         <td class="small text-secondary">{{ inv.used_by or "-" }}</td>
         <td class="text-end">
-          <form method="post" action="{{ url_for('index.invitation_delete', token=inv.token) }}"
+          <form method="post" action="{{ url_for('auth.invitation_delete', token=inv.token) }}"
                 class="d-inline"
                 onsubmit="return confirm('Delete this invitation?')">
             <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
