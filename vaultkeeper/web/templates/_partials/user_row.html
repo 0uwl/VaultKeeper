@@ -1,0 +1,23 @@
+<tr id="user-row-{{ username }}">
+  <td>
+    <a href="{{ url_for('users.user_detail', username=username) }}" class="link link-hover font-semibold">
+      {{ username }}
+    </a>
+  </td>
+  <td class="text-end">
+    <div class="flex justify-end gap-2">
+      <a href="{{ url_for('users.user_detail', username=username) }}" class="btn btn-xs btn-ghost">View</a>
+      <button type="button" class="btn btn-xs btn-error btn-outline" x-data
+        @click="$dispatch('vk:confirm', {
+          title: 'Delete user',
+          message: 'Delete user {{ username }}? This cannot be undone.',
+          onConfirm: () => document.getElementById('del-user-{{ username }}').requestSubmit()
+        })">Delete</button>
+      <form id="del-user-{{ username }}"
+            hx-post="{{ url_for('users.user_delete', username=username) }}"
+            hx-target="#user-row-{{ username }}"
+            hx-swap="outerHTML"
+            class="hidden"></form>
+    </div>
+  </td>
+</tr>

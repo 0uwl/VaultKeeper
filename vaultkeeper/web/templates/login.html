@@ -2,25 +2,25 @@
 {% block title %}Login - VaultKeeper{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center mt-5">
-  <div class="col-sm-8 col-md-5 col-lg-4">
-    <h1 class="h3 text-center mb-1">VaultKeeper</h1>
-    <p class="text-center text-secondary mb-4">CouchDB management for Obsidian LiveSync</p>
+<div class="flex justify-center mt-12">
+  <div class="w-full max-w-sm">
+    <h1 class="text-2xl font-bold text-center mb-1">VaultKeeper</h1>
+    <p class="text-center text-base-content/60 mb-6 text-sm">CouchDB management for Obsidian LiveSync</p>
 
-    <div class="card">
-      <div class="card-body p-4">
+    <div class="card bg-base-200">
+      <div class="card-body">
         <form method="post">
-          <div class="mb-3">
-            <label for="username" class="form-label">Username</label>
+          <div class="mb-4">
+            <label class="block text-sm font-medium mb-1.5" for="username">Username</label>
             <input id="username" name="username" type="text"
-                   class="form-control" autocomplete="username" autofocus required>
+                   class="input input-bordered w-full" autocomplete="username" autofocus required>
           </div>
-          <div class="mb-3">
-            <label for="password" class="form-label">Password</label>
+          <div class="mb-5">
+            <label class="block text-sm font-medium mb-1.5" for="password">Password</label>
             <input id="password" name="password" type="password"
-                   class="form-control" autocomplete="current-password" required>
+                   class="input input-bordered w-full" autocomplete="current-password" required>
           </div>
-          <button type="submit" class="btn btn-primary w-100">Sign in</button>
+          <button type="submit" class="btn btn-primary w-full">Sign in</button>
         </form>
       </div>
     </div>

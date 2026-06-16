@@ -2,41 +2,39 @@
 {% block title %}Enroll - VaultKeeper{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-md-6 col-lg-5">
+<div class="flex justify-center mt-8">
+  <div class="w-full max-w-md">
     {% if invalid %}
-    <div class="card border-danger">
-      <div class="card-body text-center py-5">
-        <h1 class="h4 mb-3">Invalid invitation</h1>
-        <p class="text-secondary">This invitation link is invalid, has expired, or has already been used.</p>
-        <p class="text-secondary small">Contact your server administrator for a new invitation.</p>
+    <div class="card bg-base-200 border border-error">
+      <div class="card-body items-center text-center py-12">
+        <h1 class="text-xl font-bold mb-2">Invalid invitation</h1>
+        <p class="text-base-content/60">This invitation link is invalid, has expired, or has already been used.</p>
+        <p class="text-base-content/40 text-sm mt-1">Contact your server administrator for a new invitation.</p>
       </div>
     </div>
     {% else %}
-    <div class="card">
-      <div class="card-header">
-        <h1 class="h5 mb-0">Create your account</h1>
-      </div>
+    <div class="card bg-base-200">
       <div class="card-body">
-        <p class="text-secondary small mb-3">Choose a username and password for your VaultKeeper account.</p>
+        <h1 class="card-title text-lg mb-1">Create your account</h1>
+        <p class="text-base-content/60 text-sm mb-4">Choose a username and password for your VaultKeeper account.</p>
         <form method="post">
-          <div class="mb-3">
-            <label for="username" class="form-label">Username</label>
-            <input id="username" name="username" type="text" class="form-control"
+          <div class="mb-4">
+            <label class="block text-sm font-medium mb-1.5" for="username">Username</label>
+            <input id="username" name="username" type="text" class="input input-bordered w-full"
                    placeholder="alice" autocomplete="username" required autofocus>
-            <div class="form-text">Lowercase letters, digits, and underscores only.</div>
-          </div>
-          <div class="mb-3">
-            <label for="password" class="form-label">Password</label>
-            <input id="password" name="password" type="password" class="form-control"
-                   autocomplete="new-password" required>
+            <div class="text-xs text-base-content/50 mt-1">Lowercase letters, digits, and underscores only.</div>
           </div>
           <div class="mb-4">
-            <label for="password_confirm" class="form-label">Confirm password</label>
-            <input id="password_confirm" name="password_confirm" type="password" class="form-control"
+            <label class="block text-sm font-medium mb-1.5" for="password">Password</label>
+            <input id="password" name="password" type="password" class="input input-bordered w-full"
                    autocomplete="new-password" required>
           </div>
-          <button type="submit" class="btn btn-primary w-100">Create account</button>
+          <div class="mb-5">
+            <label class="block text-sm font-medium mb-1.5" for="password_confirm">Confirm password</label>
+            <input id="password_confirm" name="password_confirm" type="password" class="input input-bordered w-full"
+                   autocomplete="new-password" required>
+          </div>
+          <button type="submit" class="btn btn-primary w-full">Create account</button>
         </form>
       </div>
     </div>

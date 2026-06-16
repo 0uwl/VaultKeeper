@@ -2,53 +2,52 @@
 {% block title %}Dashboard - VaultKeeper{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <h1 class="h3 mb-0">My Vaults</h1>
-  <div class="d-flex align-items-center gap-3">
-    <span class="text-secondary small">Logged in as <strong>{{ username }}</strong></span>
-    <a href="{{ url_for('vaults.vaults_list') }}" class="btn btn-sm btn-outline-secondary">Manage vaults</a>
+<div class="flex justify-between items-center mb-6">
+  <h1 class="text-2xl font-bold">My Vaults</h1>
+  <div class="flex items-center gap-3">
+    <span class="text-base-content/50 text-sm">Logged in as <strong class="text-base-content">{{ username }}</strong></span>
+    <a href="{{ url_for('vaults.vaults_list') }}" class="btn btn-outline btn-sm">Manage vaults</a>
   </div>
 </div>
 
 {% if vaults %}
-<div class="row g-3 mb-4">
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
   {% for vault in vaults %}
-  <div class="col-sm-6 col-lg-4">
-    <div class="card h-100">
-      <div class="card-body">
-        <h5 class="card-title mb-3">
-          <a href="{{ url_for('vaults.vault_detail', db_name=vault.db_name) }}" class="text-decoration-none">
-            {{ vault.vault_name }}
-          </a>
-        </h5>
-        <div class="row g-2 text-center">
-          <div class="col-6">
-            <div class="fw-semibold">{{ vault.doc_count if vault.doc_count is not none else '—' }}</div>
-            <div class="text-secondary small">Documents</div>
-          </div>
-          <div class="col-6">
-            <div class="fw-semibold">{{ vault.data_size | fmt_bytes if vault.data_size is not none else '—' }}</div>
-            <div class="text-secondary small">Data size</div>
-          </div>
+  <div class="card bg-base-200">
+    <div class="card-body">
+      <h2 class="card-title text-base">
+        <a href="{{ url_for('vaults.vault_detail', db_name=vault.db_name) }}" class="link link-hover">
+          {{ vault.vault_name }}
+        </a>
+      </h2>
+      <div class="grid grid-cols-2 gap-2 text-center mt-2">
+        <div>
+          <div class="font-semibold">{{ vault.doc_count if vault.doc_count is not none else '—' }}</div>
+          <div class="text-base-content/50 text-xs">Documents</div>
+        </div>
+        <div>
+          <div class="font-semibold">{{ vault.data_size | fmt_bytes if vault.data_size is not none else '—' }}</div>
+          <div class="text-base-content/50 text-xs">Data size</div>
         </div>
       </div>
-      <div class="card-footer d-flex gap-2">
-        <a href="{{ url_for('vaults.vault_detail', db_name=vault.db_name) }}"
-           class="btn btn-sm btn-outline-secondary flex-fill">View</a>
-        <a href="{{ url_for('vaults.vault_setup_uri', db_name=vault.db_name) }}"
-           class="btn btn-sm btn-outline-primary flex-fill">Setup URI</a>
-      </div>
+    </div>
+    <div class="card-actions justify-end px-4 pb-4 gap-2">
+      <a href="{{ url_for('vaults.vault_detail', db_name=vault.db_name) }}"
+         class="btn btn-outline btn-xs flex-1">View</a>
+      <a href="{{ url_for('vaults.vault_setup_uri', db_name=vault.db_name) }}"
+         class="btn btn-primary btn-xs flex-1">Setup URI</a>
     </div>
   </div>
   {% endfor %}
 </div>
 {% else %}
-<div class="card text-center py-5 mb-4">
-  <div class="card-body">
-    <p class="text-secondary mb-3">You don't have any vaults yet.</p>
-    <a href="{{ url_for('vaults.vaults_list') }}" class="btn btn-primary">Create your first vault</a>
+<div class="card bg-base-200 text-center">
+  <div class="card-body py-12">
+    <p class="text-base-content/50 mb-4">You don't have any vaults yet.</p>
+    <div>
+      <a href="{{ url_for('vaults.vaults_list') }}" class="btn btn-primary btn-sm">Create your first vault</a>
+    </div>
   </div>
 </div>
 {% endif %}
-
 {% endblock %}

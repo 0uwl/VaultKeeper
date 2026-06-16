@@ -2,38 +2,34 @@
 {% block title %}Settings - VaultKeeper{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <h1 class="h3 mb-0">Server settings</h1>
-</div>
+<h1 class="text-2xl font-bold mb-5">Server settings</h1>
 
-<div class="card mb-4">
-  <div class="card-header">Default vault limits</div>
+<div class="card bg-base-200">
   <div class="card-body">
-    <p class="text-secondary small mb-3">
-      These defaults apply to all users who do not have a per-user limit set.
-      Leave a field blank for no limit. Per-user limits set on the user's page always take precedence.
+    <h2 class="card-title text-base">Default vault limits</h2>
+    <p class="text-base-content/50 text-sm mb-4">
+      Applies to all users without a per-user limit. Leave blank for no limit.
+      Per-user limits on the user's page always take precedence.
     </p>
     <form method="post">
-      <div class="row g-3">
-        <div class="col-md-4">
-          <label for="default_max_vaults" class="form-label">Default max vaults per user</label>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+        <div>
+          <label class="block text-sm font-medium mb-1.5" for="default_max_vaults">Default max vaults per user</label>
           <input id="default_max_vaults" name="default_max_vaults" type="number" min="0"
-                 class="form-control"
+                 class="input input-bordered w-full input-sm"
                  value="{{ server_settings.default_max_vaults if server_settings.default_max_vaults is not none else '' }}"
                  placeholder="unlimited">
         </div>
-        <div class="col-md-4">
-          <label for="default_max_vault_size_bytes" class="form-label">Default max vault size (bytes)</label>
+        <div>
+          <label class="block text-sm font-medium mb-1.5" for="default_max_vault_size_bytes">Default max vault size (bytes)</label>
           <input id="default_max_vault_size_bytes" name="default_max_vault_size_bytes" type="number" min="0"
-                 class="form-control"
+                 class="input input-bordered w-full input-sm"
                  value="{{ server_settings.default_max_vault_size_bytes if server_settings.default_max_vault_size_bytes is not none else '' }}"
                  placeholder="unlimited">
-          <div class="form-text">Advisory only - cannot interrupt an active sync.</div>
-        </div>
-        <div class="col-md-4 d-flex align-items-end">
-          <button type="submit" class="btn btn-primary w-100">Save settings</button>
+          <div class="text-xs text-base-content/40 mt-1">Advisory only — cannot interrupt an active sync.</div>
         </div>
       </div>
+      <button type="submit" class="btn btn-primary btn-sm">Save settings</button>
     </form>
   </div>
 </div>

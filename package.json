@@ -1,0 +1,12 @@
+{
+  "name": "vaultkeeper-frontend",
+  "private": true,
+  "scripts": {
+    "build": "tailwindcss -i vaultkeeper/web/static/input.css -o vaultkeeper/web/static/app.css --minify",
+    "watch": "tailwindcss -i vaultkeeper/web/static/input.css -o vaultkeeper/web/static/app.css --watch"
+  },
+  "devDependencies": {
+    "daisyui": "^4",
+    "tailwindcss": "^3"
+  }
+}

@@ -12,7 +12,7 @@ from flask import (
 )
 
 from vaultkeeper.client import CouchDB, CouchDBError
-from vaultkeeper.web.helpers import _get_client, admin_required, _current_user
+from vaultkeeper.web.helpers import _get_client, admin_required, _current_user, is_htmx, htmx_response
 
 auth = Blueprint("auth", __name__)
 
@@ -127,8 +127,12 @@ def invitation_delete(token):
     try:
         client.delete_invitation(token)
         client.log_audit_event("invitation.delete", actor=_current_user(), target=token[:8])
+        if is_htmx():
+            return htmx_response(toast={"message": "Invitation deleted.", "type": "success"})
         flash("Invitation deleted.", "success")
     except CouchDBError as e:
         current_app.logger.error(f"Error deleting invitation: {str(e)}")
+        if is_htmx():
+            return htmx_response(status=422, toast={"message": str(e), "type": "error"})
         flash(str(e), "error")
     return redirect(url_for("users.users_list", tab="invitations"))

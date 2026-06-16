@@ -24,3 +24,6 @@ tests/
 # Temporary files
 *.tmp
 *.log
+
+# Node / frontend
+node_modules/

@@ -219,3 +219,7 @@ __marimo__/
 
 CLAUDE.md
 dev.compose.yml
+
+# Frontend build artifacts
+node_modules/
+vaultkeeper/web/static/app.css
