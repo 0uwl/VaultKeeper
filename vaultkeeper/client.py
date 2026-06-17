@@ -10,12 +10,14 @@ Reads connection settings from environment variables:
 """
 
 from datetime import datetime, timezone, timedelta
+import io
 import json
 import os
 import re
 import secrets
 import string
 import subprocess
+import tarfile
 
 from uuid import uuid4
 
@@ -27,6 +29,7 @@ from vaultkeeper.logger import get_logger
 _DB_NAME_RE = re.compile(r"^[a-z][a-z0-9_$()+\-/]*$")
 _SETUP_URI_SCRIPT_DEFAULT = "/scripts/generate_setupuri.ts"
 CONFIG_DB = "vaultkeeper_data"
+BACKUP_DIR_DEFAULT = "/backups"
 
 LOGGER = get_logger(__name__)
 
@@ -648,3 +651,184 @@ class CouchDB:
             "passphrase_generated":     passphrase_generated,
             "uri_passphrase_generated": uri_passphrase_generated,
         }
+
+    # -----------------------------------------------------------------------
+    # Backup / restore
+    # -----------------------------------------------------------------------
+
+    def backup(
+        self,
+        dest_path: str,
+        databases: list[str],
+        include_users: bool = False,
+        include_config: bool = False,
+    ) -> dict:
+        """
+        Create a .tar.gz backup archive at dest_path.
+
+        Each database is written as an NDJSON file inside the archive. The first
+        line of each file is a header object containing the security document;
+        subsequent lines are regular documents. Returns the manifest dict.
+        """
+        dbs = list(databases)
+        if include_users and "_users" not in dbs:
+            dbs.append("_users")
+        if include_config and CONFIG_DB not in dbs:
+            dbs.append(CONFIG_DB)
+
+        os.makedirs(os.path.dirname(os.path.abspath(dest_path)), exist_ok=True)
+
+        manifest: dict = {
+            "version": 1,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "databases": {},
+        }
+
+        with tarfile.open(dest_path, "w:gz") as tar:
+            for db in dbs:
+                r = self._session.get(
+                    self._url(db, "_all_docs"),
+                    params={"include_docs": "true"},
+                )
+                if r.status_code != 200:
+                    raise CouchDBError(f"Failed to read '{db}': {r.status_code} {r.text}")
+
+                docs = [row["doc"] for row in r.json().get("rows", [])]
+
+                sec_r = self._session.get(self._url(db, "_security"))
+                security = sec_r.json() if sec_r.status_code == 200 else {}
+
+                db_meta: dict = {"doc_count": len(docs)}
+                if db.startswith("vault_"):
+                    meta = self.get_vault_meta(db)
+                    if meta:
+                        db_meta["vault_name"] = meta.get("vault_name")
+                        db_meta["username"] = meta.get("username")
+
+                lines = [json.dumps({"type": "header", "db": db, "security": security})]
+                lines += [json.dumps(doc) for doc in docs]
+                content = ("\n".join(lines) + "\n").encode()
+
+                info = tarfile.TarInfo(name=f"{db}.ndjson")
+                info.size = len(content)
+                tar.addfile(info, io.BytesIO(content))
+
+                manifest["databases"][db] = db_meta
+
+            manifest_bytes = json.dumps(manifest, indent=2).encode()
+            info = tarfile.TarInfo(name="manifest.json")
+            info.size = len(manifest_bytes)
+            tar.addfile(info, io.BytesIO(manifest_bytes))
+
+        LOGGER.info(f"Backup created at '{dest_path}' covering {len(dbs)} database(s)")
+        return manifest
+
+    def restore(
+        self,
+        src_path: str,
+        databases: list[str] | None = None,
+    ) -> dict:
+        """
+        Restore databases from a backup archive.
+
+        Vault databases are dropped and recreated for a clean restore. The
+        _users and vaultkeeper_data databases are merged (existing documents
+        are left in place; backed-up documents that conflict are skipped).
+
+        If databases is None, all databases in the archive are restored.
+        Returns a dict mapping each db name to the number of documents restored.
+        """
+        results: dict[str, int] = {}
+
+        with tarfile.open(src_path, "r:gz") as tar:
+            manifest = json.loads(tar.extractfile(tar.getmember("manifest.json")).read())
+            available = list(manifest["databases"].keys())
+            to_restore = databases if databases is not None else available
+
+            for db in to_restore:
+                if db not in available:
+                    raise CouchDBError(f"'{db}' is not in this backup archive.")
+
+                content = tar.extractfile(tar.getmember(f"{db}.ndjson")).read().decode()
+                lines = [line for line in content.splitlines() if line.strip()]
+                if not lines:
+                    results[db] = 0
+                    continue
+
+                header = json.loads(lines[0])
+                security = header.get("security", {})
+                docs = [json.loads(line) for line in lines[1:]]
+
+                if db.startswith("vault_"):
+                    if self.db_exists(db):
+                        r = self._session.delete(self._url(db))
+                        if r.status_code != 200:
+                            raise CouchDBError(f"Failed to drop '{db}': {r.status_code} {r.text}")
+                    r = self._session.put(self._url(db))
+                    if r.status_code != 201:
+                        raise CouchDBError(f"Failed to create '{db}': {r.status_code} {r.text}")
+                else:
+                    r = self._session.put(self._url(db))
+                    if r.status_code not in (201, 412):
+                        raise CouchDBError(f"Failed to access '{db}': {r.status_code} {r.text}")
+
+                # CouchDB forbids writing _security on the _users database.
+                if security and db != "_users":
+                    r = self._session.put(self._url(db, "_security"), data=json.dumps(security))
+                    if r.status_code != 200:
+                        raise CouchDBError(f"Failed to set security on '{db}': {r.status_code} {r.text}")
+
+                # Strip _rev so each document is inserted as a new revision.
+                # For _users and vaultkeeper_data, conflicts with existing docs
+                # are silently skipped by CouchDB's bulk_docs response.
+                clean = [{k: v for k, v in doc.items() if k != "_rev"} for doc in docs]
+                if clean:
+                    r = self._session.post(
+                        self._url(db, "_bulk_docs"),
+                        data=json.dumps({"docs": clean}),
+                    )
+                    if r.status_code not in (200, 201):
+                        raise CouchDBError(f"Failed to restore docs to '{db}': {r.status_code} {r.text}")
+
+                results[db] = len(clean)
+                LOGGER.info(f"Restored '{db}': {len(clean)} document(s)")
+
+        return results
+
+    def read_backup_manifest(self, path: str) -> dict:
+        """Read and return the manifest from a backup archive."""
+        try:
+            with tarfile.open(path, "r:gz") as tar:
+                m = tar.getmember("manifest.json")
+                return json.loads(tar.extractfile(m).read())
+        except (OSError, tarfile.TarError, KeyError, json.JSONDecodeError) as e:
+            raise CouchDBError(f"Could not read backup manifest: {e}") from e
+
+    def list_backups(self, backup_dir: str) -> list[dict]:
+        """Return metadata for all backup archives in backup_dir, newest first."""
+        if not os.path.isdir(backup_dir):
+            return []
+        result = []
+        for fname in sorted(os.listdir(backup_dir), reverse=True):
+            if not fname.endswith(".tar.gz"):
+                continue
+            path = os.path.join(backup_dir, fname)
+            try:
+                manifest = self.read_backup_manifest(path)
+            except CouchDBError:
+                manifest = {}
+            result.append({
+                "filename": fname,
+                "path": path,
+                "size": os.stat(path).st_size,
+                "created_at": manifest.get("created_at"),
+                "databases": manifest.get("databases", {}),
+            })
+        return result
+
+    def delete_backup(self, path: str) -> None:
+        """Delete a backup archive file."""
+        if not os.path.isfile(path):
+            raise CouchDBError(f"Backup not found: {path}")
+        os.remove(path)
+        LOGGER.info(f"Deleted backup '{os.path.basename(path)}'")

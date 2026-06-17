@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Create Backup - VaultKeeper{% endblock %}
+
+{% block content %}
+<div class="flex items-center gap-3 mb-6">
+  <h1 class="text-2xl font-bold">Create backup</h1>
+  <a href="{{ url_for('backup.backups_list') }}" class="btn btn-ghost btn-sm">← Backups</a>
+</div>
+
+<form method="post" x-data="{ allVaults: false }">
+
+  <div class="card bg-base-200 mb-4">
+    <div class="card-body">
+      <h2 class="card-title text-base">Vault databases</h2>
+      <p class="text-base-content/50 text-sm mb-3">Select which vaults to include in this backup.</p>
+
+      {% if vaults %}
+      <div class="mb-3">
+        <label class="flex items-center gap-2 cursor-pointer text-sm text-base-content/60 mb-3">
+          <input type="checkbox" class="checkbox checkbox-sm"
+                 @change="allVaults = $event.target.checked; $el.closest('form').querySelectorAll('.vault-cb').forEach(cb => cb.checked = allVaults)">
+          Select all vaults
+        </label>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {% for v in vaults %}
+          <label class="flex items-start gap-2 cursor-pointer p-2 rounded hover:bg-base-300">
+            <input type="checkbox" name="databases" value="{{ v.db_name }}"
+                   class="checkbox checkbox-sm vault-cb mt-0.5"
+                   {{ 'checked' if v.selected else '' }}>
+            <div>
+              <div class="font-medium text-sm">{{ v.vault_name }}</div>
+              <div class="text-xs text-base-content/40">{{ v.username }} · <span class="font-mono">{{ v.db_name }}</span></div>
+            </div>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      {% else %}
+      <p class="text-base-content/40 text-sm">No vaults found.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card bg-base-200 mb-6">
+    <div class="card-body">
+      <h2 class="card-title text-base">System databases</h2>
+      <p class="text-base-content/50 text-sm mb-3">Include CouchDB system data alongside vault backups.</p>
+
+      <div class="flex flex-col gap-3">
+        <label class="flex items-start gap-2 cursor-pointer">
+          <input type="checkbox" name="include_users" class="checkbox checkbox-sm mt-0.5">
+          <div>
+            <div class="font-medium text-sm">User accounts <span class="font-mono text-xs text-base-content/40">(_users)</span></div>
+            <div class="text-xs text-base-content/50">All CouchDB user documents including hashed credentials.</div>
+          </div>
+        </label>
+
+        <label class="flex items-start gap-2 cursor-pointer">
+          <input type="checkbox" name="include_config" class="checkbox checkbox-sm mt-0.5">
+          <div>
+            <div class="font-medium text-sm">VaultKeeper configuration <span class="font-mono text-xs text-base-content/40">(vaultkeeper_data)</span></div>
+            <div class="text-xs text-base-content/50">Invitations, user limits, server settings, and audit log.</div>
+          </div>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex gap-3">
+    <button type="submit" class="btn btn-primary">Create backup</button>
+    <a href="{{ url_for('backup.backups_list') }}" class="btn btn-ghost">Cancel</a>
+  </div>
+</form>
+{% endblock %}

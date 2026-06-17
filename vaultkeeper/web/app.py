@@ -40,11 +40,13 @@ def create_app() -> Flask:
     from vaultkeeper.web.users import users
     from vaultkeeper.web.vaults import vaults
     from vaultkeeper.web.audit import audit
+    from vaultkeeper.web.backup import backup
     app.register_blueprint(main)
     app.register_blueprint(auth)
     app.register_blueprint(users)
     app.register_blueprint(vaults)
     app.register_blueprint(audit)
+    app.register_blueprint(backup)
     
     try:
         with app.app_context():

@@ -171,6 +171,12 @@ def vault_setup_uri(db_name):
     return render_template("setup_uri.html", db_name=db_name, username=username, result=result)
 
 
+@vaults.route("/vaults/<db_name>/backup", methods=["POST"])
+@admin_required
+def vault_backup(db_name):
+    return redirect(url_for("backup.backup_new", vault=db_name))
+
+
 @vaults.route("/provision", methods=["GET", "POST"])
 @admin_required
 def provision():

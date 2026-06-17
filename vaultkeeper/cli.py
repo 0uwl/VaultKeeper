@@ -14,7 +14,7 @@ import sys
 
 import click
 
-from vaultkeeper.client import CouchDB, CouchDBError, ValidationError
+from vaultkeeper.client import BACKUP_DIR_DEFAULT, CouchDB, CouchDBError, ValidationError
 
 _CREDS_FILE = os.path.expanduser("~/.vaultkeeper/credentials")
 
@@ -417,4 +417,166 @@ def provision(host, admin, password, username, vault_name,
         )
         _print_uri_result(result)
     except (CouchDBError, ValidationError) as e:
+        _abort(str(e))
+
+
+# ---------------------------------------------------------------------------
+# backup
+# ---------------------------------------------------------------------------
+
+@cli.group()
+def backup():
+    """Create and restore CouchDB backups."""
+
+
+def _default_backup_dir() -> str:
+    return os.environ.get("VAULTKEEPER_BACKUP_DIR", BACKUP_DIR_DEFAULT)
+
+
+@backup.command("create")
+@common_options
+@click.option("--vault", "vaults", multiple=True, metavar="DB_NAME",
+              help="Vault database to include (repeatable). Omit to back up all vaults.")
+@click.option("--all-vaults", "all_vaults", is_flag=True,
+              help="Include all vault databases.")
+@click.option("--users", "include_users", is_flag=True,
+              help="Include the _users database.")
+@click.option("--config", "include_config", is_flag=True,
+              help="Include the vaultkeeper_data database.")
+@click.option("--output-dir", "output_dir", default=None, envvar="VAULTKEEPER_BACKUP_DIR",
+              help="Directory to write the backup archive (default: /backups).")
+def backup_create(host, admin, password, vaults, all_vaults, include_users,
+                  include_config, output_dir):
+    """Create a backup archive of selected databases."""
+    from datetime import datetime, timezone
+
+    client = _get_client(host, admin, password)
+    out_dir = output_dir or _default_backup_dir()
+
+    if all_vaults:
+        try:
+            databases = client.list_all_vaults()
+        except CouchDBError as e:
+            _abort(str(e))
+            return
+    else:
+        databases = list(vaults)
+
+    if not databases and not include_users and not include_config:
+        _abort("Specify at least one of --vault, --all-vaults, --users, or --config.")
+
+    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    filename = f"vaultkeeper_backup_{ts}.tar.gz"
+    dest_path = os.path.join(out_dir, filename)
+
+    _info(f"Creating backup at '{dest_path}'...")
+    try:
+        manifest = client.backup(
+            dest_path=dest_path,
+            databases=databases,
+            include_users=include_users,
+            include_config=include_config,
+        )
+        for db, meta in manifest["databases"].items():
+            label = meta.get("vault_name") or db
+            _ok(f"  {label}  ({meta['doc_count']} docs)")
+        _ok(f"Backup saved to '{dest_path}'.")
+    except CouchDBError as e:
+        _abort(str(e))
+
+
+@backup.command("list")
+@common_options
+@click.option("--output-dir", "output_dir", default=None, envvar="VAULTKEEPER_BACKUP_DIR",
+              help="Directory to search for backup archives.")
+def backup_list(host, admin, password, output_dir):
+    """List all backup archives."""
+    client = _get_client(host, admin, password)
+    out_dir = output_dir or _default_backup_dir()
+    try:
+        backups = client.list_backups(out_dir)
+    except CouchDBError as e:
+        _abort(str(e))
+        return
+
+    if not backups:
+        click.echo(f"  No backups found in '{out_dir}'.")
+        return
+
+    for b in backups:
+        click.echo(click.style(f"  {b['filename']}", bold=True))
+        if b["created_at"]:
+            click.echo(f"    Created:   {b['created_at'][:19].replace('T', ' ')} UTC")
+        click.echo(f"    Size:      {_fmt_bytes(b['size'])}")
+        dbs = b.get("databases", {})
+        if dbs:
+            labels = [meta.get("vault_name") or db for db, meta in dbs.items()]
+            click.echo(f"    Databases: {', '.join(labels)}")
+        click.echo("")
+
+
+@backup.command("restore")
+@common_options
+@click.argument("filename")
+@click.option("--databases", "databases", default=None,
+              help="Comma-separated list of databases to restore (default: all).")
+@click.option("--output-dir", "output_dir", default=None, envvar="VAULTKEEPER_BACKUP_DIR",
+              help="Directory containing the backup archive.")
+@click.option("--yes", is_flag=True, help="Skip confirmation prompt.")
+def backup_restore(host, admin, password, filename, databases, output_dir, yes):
+    """Restore databases from a backup archive."""
+    client = _get_client(host, admin, password)
+    out_dir = output_dir or _default_backup_dir()
+    path = os.path.join(out_dir, os.path.basename(filename))
+
+    try:
+        manifest = client.read_backup_manifest(path)
+    except CouchDBError as e:
+        _abort(str(e))
+        return
+
+    db_list = [d.strip() for d in databases.split(",")] if databases else None
+    to_show = db_list or list(manifest["databases"].keys())
+
+    click.echo(click.style("  ⚠  Databases to be restored:", bold=True, fg="yellow"))
+    for db in to_show:
+        meta = manifest["databases"].get(db, {})
+        label = meta.get("vault_name") or db
+        click.echo(f"    • {label}  ({meta.get('doc_count', '?')} docs)")
+    click.echo("")
+    _warn("Vault databases will be DELETED and recreated. This cannot be undone.")
+
+    if not yes:
+        click.confirm("  Proceed with restore?", abort=True)
+
+    try:
+        results = client.restore(path, db_list)
+        for db, count in results.items():
+            meta = manifest["databases"].get(db, {})
+            label = meta.get("vault_name") or db
+            _ok(f"  {label}: {count} document(s) restored.")
+        _ok("Restore complete.")
+    except CouchDBError as e:
+        _abort(str(e))
+
+
+@backup.command("delete")
+@common_options
+@click.argument("filename")
+@click.option("--output-dir", "output_dir", default=None, envvar="VAULTKEEPER_BACKUP_DIR",
+              help="Directory containing the backup archive.")
+@click.option("--yes", is_flag=True, help="Skip confirmation prompt.")
+def backup_delete(host, admin, password, filename, output_dir, yes):
+    """Delete a backup archive."""
+    client = _get_client(host, admin, password)
+    out_dir = output_dir or _default_backup_dir()
+    path = os.path.join(out_dir, os.path.basename(filename))
+
+    if not yes:
+        click.confirm(f"Delete '{os.path.basename(filename)}'? This cannot be undone.", abort=True)
+
+    try:
+        client.delete_backup(path)
+        _ok(f"Deleted '{os.path.basename(filename)}'.")
+    except CouchDBError as e:
         _abort(str(e))
