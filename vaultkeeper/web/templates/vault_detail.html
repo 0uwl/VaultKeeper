@@ -44,6 +44,11 @@
               hx-swap="none">
           <button type="submit" class="btn btn-outline btn-sm">Compact</button>
         </form>
+        {% if session.is_admin %}
+        <a href="{{ url_for('backup.backup_new') }}?vault={{ vault.name }}" class="btn btn-outline btn-sm">
+          Backup
+        </a>
+        {% endif %}
       </div>
     </div>
   </div>

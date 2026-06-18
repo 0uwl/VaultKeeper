@@ -16,7 +16,6 @@
   {# --- Users tab --- #}
   <div x-show="tab === 'users'" x-cloak>
 
-    {% if users %}
     <div class="overflow-x-auto mb-5">
       <table class="table">
         <thead>
@@ -28,13 +27,12 @@
         <tbody id="users-tbody">
           {% for username in users %}
             {% include "_partials/user_row.html" %}
+          {% else %}
+          <tr id="no-users-row"><td colspan="2" class="text-base-content/50">No users yet.</td></tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
-    {% else %}
-    <p class="text-base-content/50 mb-5">No users yet.</p>
-    {% endif %}
 
     <div class="card bg-base-200">
       <div class="card-body">

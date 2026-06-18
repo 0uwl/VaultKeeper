@@ -39,6 +39,7 @@
           <li><a href="{{ url_for('vaults.vaults_list') }}" class="{{ 'active' if request.endpoint in ('vaults.vaults_list', 'vaults.vault_detail', 'vaults.vault_setup_uri') else '' }}">Vaults</a></li>
           {% if session.is_admin %}
           <li><a href="{{ url_for('vaults.provision') }}" class="{{ 'active' if request.endpoint == 'vaults.provision' else '' }}">Provision</a></li>
+          <li><a href="{{ url_for('backup.backups_list') }}" class="{{ 'active' if request.endpoint in ('backup.backups_list', 'backup.backup_new', 'backup.backup_restore') else '' }}">Backups</a></li>
           <li><a href="{{ url_for('main.settings') }}" class="{{ 'active' if request.endpoint == 'main.settings' else '' }}">Settings</a></li>
           <li><a href="{{ url_for('audit.audit_log') }}" class="{{ 'active' if request.endpoint == 'audit.audit_log' else '' }}">Audit</a></li>
           {% endif %}
@@ -66,6 +67,7 @@
         <li><a href="{{ url_for('vaults.vaults_list') }}" class="{{ 'active' if request.endpoint in ('vaults.vaults_list', 'vaults.vault_detail', 'vaults.vault_setup_uri') else '' }}">Vaults</a></li>
         {% if session.is_admin %}
         <li><a href="{{ url_for('vaults.provision') }}" class="{{ 'active' if request.endpoint == 'vaults.provision' else '' }}">Provision</a></li>
+        <li><a href="{{ url_for('backup.backups_list') }}" class="{{ 'active' if request.endpoint in ('backup.backups_list', 'backup.backup_new', 'backup.backup_restore') else '' }}">Backups</a></li>
         <li><a href="{{ url_for('main.settings') }}" class="{{ 'active' if request.endpoint == 'main.settings' else '' }}">Settings</a></li>
         <li><a href="{{ url_for('audit.audit_log') }}" class="{{ 'active' if request.endpoint == 'audit.audit_log' else '' }}">Audit</a></li>
         {% endif %}
@@ -144,7 +146,8 @@
     {% endwith %}
   </div>
 
-  {# Global confirm modal — triggered via $dispatch('vk:confirm', { title, message, label, onConfirm }) #}
+  {# Global confirm modal — triggered via $dispatch('vk:confirm', { title, message, label, checkboxLabel, onConfirm }).
+     onConfirm receives the checkbox's checked state (false if no checkboxLabel was given). #}
   <dialog id="vk-confirm-modal" class="modal"
           x-data="{
             _el: null,
@@ -152,6 +155,8 @@
             msg: '',
             label: 'Delete',
             btnClass: 'btn-error',
+            checkboxLabel: null,
+            checkboxChecked: false,
             _cb: null
           }"
           x-init="_el = $el"
@@ -160,15 +165,21 @@
             msg = $event.detail.message || '';
             label = $event.detail.label || 'Delete';
             btnClass = $event.detail.btnClass || 'btn-error';
+            checkboxLabel = $event.detail.checkboxLabel || null;
+            checkboxChecked = false;
             _cb = $event.detail.onConfirm || null;
             _el.showModal()
           ">
     <div class="modal-box">
       <h3 class="font-bold text-lg mb-2" x-text="title"></h3>
       <p class="text-base-content/70 mb-4" x-text="msg"></p>
+      <label class="label cursor-pointer justify-start gap-2 mb-4" x-show="checkboxLabel">
+        <input type="checkbox" class="checkbox checkbox-sm" x-model="checkboxChecked">
+        <span class="label-text" x-text="checkboxLabel"></span>
+      </label>
       <div class="modal-action mt-0">
         <button class="btn btn-ghost btn-sm" @click="_el.close()">Cancel</button>
-        <button :class="'btn btn-sm ' + btnClass" @click="_el.close(); _cb && _cb()" x-text="label"></button>
+        <button :class="'btn btn-sm ' + btnClass" @click="_el.close(); _cb && _cb(checkboxChecked)" x-text="label"></button>
       </div>
     </div>
     <form method="dialog" class="modal-backdrop"><button>close</button></form>

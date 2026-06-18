@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Backups - VaultKeeper{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-6">
+  <h1 class="text-2xl font-bold">Backups</h1>
+  <a href="{{ url_for('backup.backup_new') }}" class="btn btn-primary btn-sm">Create backup</a>
+</div>
+
+{% if backups %}
+<div class="overflow-x-auto">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Created</th>
+        <th>Databases</th>
+        <th>Size</th>
+        <th class="text-end">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for b in backups %}
+      <tr>
+        <td class="whitespace-nowrap text-sm">
+          {% if b.created_at %}
+            {{ b.created_at[:19].replace('T', ' ') }} UTC
+          {% else %}
+            <span class="text-base-content/40">unknown</span>
+          {% endif %}
+        </td>
+        <td>
+          <div class="flex flex-wrap gap-1">
+            {% for db, meta in b.databases.items() %}
+              <span class="badge badge-ghost badge-sm font-mono">
+                {% if meta.get('vault_name') %}
+                  {{ meta.vault_name }}
+                  <span class="text-base-content/40 ml-1">({{ meta.username }})</span>
+                {% else %}
+                  {{ db }}
+                {% endif %}
+              </span>
+            {% endfor %}
+          </div>
+        </td>
+        <td class="text-sm whitespace-nowrap">{{ b.size | fmt_bytes }}</td>
+        <td class="text-end">
+          <div class="flex justify-end gap-2">
+            <a href="{{ url_for('backup.backup_download', filename=b.filename) }}"
+               class="btn btn-xs btn-ghost">Download</a>
+            <a href="{{ url_for('backup.backup_restore', filename=b.filename) }}"
+               class="btn btn-xs btn-outline btn-primary">Restore</a>
+            <button type="button" class="btn btn-xs btn-error btn-outline" x-data
+              @click="$dispatch('vk:confirm', {
+                title: 'Delete backup',
+                message: 'Delete {{ b.filename }}? This cannot be undone.',
+                onConfirm: () => document.getElementById('del-backup-{{ loop.index }}').requestSubmit()
+              })">Delete</button>
+            <form id="del-backup-{{ loop.index }}"
+                  method="post"
+                  action="{{ url_for('backup.backup_delete', filename=b.filename) }}"
+                  class="hidden"></form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="text-center py-16 text-base-content/40">
+  <p class="mb-4">No backups yet.</p>
+  <a href="{{ url_for('backup.backup_new') }}" class="btn btn-primary btn-sm">Create your first backup</a>
+</div>
+{% endif %}
+{% endblock %}

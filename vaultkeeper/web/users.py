@@ -29,6 +29,7 @@ def users_list():
             client.log_audit_event("user.create", actor=_current_user(), target=username)
             if is_htmx():
                 html = render_template("_partials/user_row.html", username=username)
+                html += '<tr id="no-users-row" hx-swap-oob="delete"></tr>'
                 return htmx_response(
                     html,
                     toast={"message": f"User '{username}' created.", "type": "success"},
@@ -111,9 +112,12 @@ def user_detail(username):
 @admin_required
 def user_delete(username):
     client = _get_client()
+    delete_vaults = request.form.get("delete_vaults") == "1"
     try:
-        client.delete_user(username)
-        client.log_audit_event("user.delete", actor=_current_user(), target=username)
+        client.delete_user(username, delete_vaults=delete_vaults)
+        client.log_audit_event(
+            "user.delete", actor=_current_user(), target=username, details={"delete_vaults": delete_vaults}
+        )
         if is_htmx():
             return htmx_response(toast={"message": f"User '{username}' deleted.", "type": "success"})
         flash(f"User '{username}' deleted.", "success")
@@ -128,7 +132,7 @@ def user_delete(username):
 @users.route("/users/<username>/passwd", methods=["POST"])
 @login_required
 def user_passwd(username):
-    if not _is_admin() and _current_user() != username:
+    if _current_user() != username:
         flash("Access denied.", "error")
         return redirect(url_for("main.dashboard"))
 

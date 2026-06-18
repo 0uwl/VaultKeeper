@@ -15,6 +15,7 @@ import os
 import shutil
 import time
 import uuid
+from urllib.parse import urlsplit
 
 import pytest
 import requests
@@ -60,7 +61,11 @@ def couchdb_client() -> CouchDB:
     if test_url:
         username = os.environ.get("COUCHDB_TEST_USER", _DEFAULT_USER)
         password = os.environ.get("COUCHDB_TEST_PASSWORD", _DEFAULT_PASSWORD)
-        client = CouchDB(host=test_url, username=username, password=password)
+        parsed = urlsplit(test_url)
+        client = CouchDB(
+            host=parsed.hostname, port=parsed.port, protocol=parsed.scheme,
+            username=username, password=password,
+        )
         client.server_init()
         yield client
         return
@@ -76,10 +81,10 @@ def couchdb_client() -> CouchDB:
     with container as c:
         host = c.get_container_host_ip()
         port = c.get_exposed_port(5984)
-        url = f"http://{host}:{port}"
-        _wait_for_couchdb(url, _DEFAULT_USER, _DEFAULT_PASSWORD)
+        _wait_for_couchdb(f"http://{host}:{port}", _DEFAULT_USER, _DEFAULT_PASSWORD)
 
-        client = CouchDB(host=url, username=_DEFAULT_USER, password=_DEFAULT_PASSWORD)
+        client = CouchDB(host=host, port=port, protocol="http",
+                         username=_DEFAULT_USER, password=_DEFAULT_PASSWORD)
         client.server_init()
         yield client
 

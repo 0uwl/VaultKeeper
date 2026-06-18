@@ -43,22 +43,22 @@
     <div class="font-semibold mb-2">Save these passphrases now. They cannot be recovered.</div>
     <dl class="text-sm space-y-1">
       <div class="flex gap-2 flex-wrap">
-        <dt class="text-base-content/60">User</dt>
+        <dt class="opacity-70">User</dt>
         <dd><code class="font-mono">{{ result.username }}</code></dd>
       </div>
       <div class="flex gap-2 flex-wrap">
-        <dt class="text-base-content/60">Vault database</dt>
+        <dt class="opacity-70">Vault database</dt>
         <dd><code class="font-mono">{{ result.db_name }}</code></dd>
       </div>
       {% if result.passphrase_generated %}
       <div class="flex gap-2 flex-wrap">
-        <dt class="text-base-content/60">E2E passphrase <span class="badge badge-neutral badge-sm">auto-generated</span></dt>
+        <dt class="opacity-70">E2E passphrase <span class="badge badge-neutral badge-sm">auto-generated</span></dt>
         <dd><code class="vk-secret">{{ result.passphrase }}</code></dd>
       </div>
       {% endif %}
       {% if result.uri_passphrase and result.uri_passphrase_generated %}
       <div class="flex gap-2 flex-wrap">
-        <dt class="text-base-content/60">URI passphrase <span class="badge badge-neutral badge-sm">auto-generated</span></dt>
+        <dt class="opacity-70">URI passphrase <span class="badge badge-neutral badge-sm">auto-generated</span></dt>
         <dd><code class="vk-secret">{{ result.uri_passphrase }}</code></dd>
       </div>
       {% endif %}

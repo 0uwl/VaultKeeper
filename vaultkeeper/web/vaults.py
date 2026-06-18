@@ -55,17 +55,32 @@ def vaults_list():
 
     try:
         if _is_admin():
-            vault_list = [
-                {"db_name": db, "vault_name": (client.get_vault_meta(db) or {}).get("vault_name", db)}
-                for db in client.list_all_vaults()
-            ]
+            vault_list = []
+            for db in client.list_all_vaults():
+                meta = client.get_vault_meta(db) or {}
+                vault_list.append({
+                    "db_name": db,
+                    "vault_name": meta.get("vault_name", db),
+                    "username": meta.get("username", ""),
+                })
         else:
             vault_list = client.list_vaults_for_user(_current_user())
     except CouchDBError as e:
         current_app.logger.error(f"Error listing vaults: {str(e)}")
         flash(str(e), "error")
         vault_list = []
-    return render_template("vaults.html", vaults=vault_list)
+
+    usernames = sorted({v["username"] for v in vault_list if v.get("username")}) if _is_admin() else []
+
+    all_users = []
+    if _is_admin():
+        try:
+            all_users = sorted(client.list_users())
+        except CouchDBError as e:
+            current_app.logger.error(f"Error listing users: {str(e)}")
+            flash(str(e), "error")
+
+    return render_template("vaults.html", vaults=vault_list, usernames=usernames, all_users=all_users)
 
 
 @vaults.route("/vaults/<db_name>")
@@ -168,7 +183,13 @@ def vault_setup_uri(db_name):
             current_app.logger.error(f"Error when generating Setup URI for '{vault_name}': {str(e)}")
             flash(str(e), "error")
 
-    return render_template("setup_uri.html", db_name=db_name, username=username, result=result)
+    return render_template("setup_uri.html", db_name=db_name, username=username, vault_name=vault_name, result=result)
+
+
+@vaults.route("/vaults/<db_name>/backup", methods=["POST"])
+@admin_required
+def vault_backup(db_name):
+    return redirect(url_for("backup.backup_new", vault=db_name))
 
 
 @vaults.route("/provision", methods=["GET", "POST"])
