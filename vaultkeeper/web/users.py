@@ -128,7 +128,7 @@ def user_delete(username):
 @users.route("/users/<username>/passwd", methods=["POST"])
 @login_required
 def user_passwd(username):
-    if not _is_admin() and _current_user() != username:
+    if _current_user() != username:
         flash("Access denied.", "error")
         return redirect(url_for("main.dashboard"))
 

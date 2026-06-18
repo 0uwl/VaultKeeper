@@ -46,6 +46,7 @@
 {% endif %}
 
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+  {% if session.username == username %}
   <div class="card bg-base-200">
     <div class="card-body">
       <h2 class="card-title text-base">Change password</h2>
@@ -58,6 +59,7 @@
       </form>
     </div>
   </div>
+  {% endif %}
 
   {% if session.is_admin %}
   <div class="card bg-base-200">
