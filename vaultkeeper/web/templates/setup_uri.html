@@ -64,13 +64,13 @@
     <dl class="text-sm space-y-1">
       {% if result.passphrase_generated %}
       <div class="flex gap-2 flex-wrap">
-        <dt class="text-base-content/60">E2E passphrase <span class="badge badge-neutral badge-sm">auto-generated</span></dt>
+        <dt class="opacity-70">E2E passphrase <span class="badge badge-neutral badge-sm">auto-generated</span></dt>
         <dd><code class="vk-secret">{{ result.passphrase }}</code></dd>
       </div>
       {% endif %}
       {% if result.uri_passphrase and result.uri_passphrase_generated %}
       <div class="flex gap-2 flex-wrap">
-        <dt class="text-base-content/60">URI passphrase <span class="badge badge-neutral badge-sm">auto-generated</span></dt>
+        <dt class="opacity-70">URI passphrase <span class="badge badge-neutral badge-sm">auto-generated</span></dt>
         <dd><code class="vk-secret">{{ result.uri_passphrase }}</code></dd>
       </div>
       {% endif %}
