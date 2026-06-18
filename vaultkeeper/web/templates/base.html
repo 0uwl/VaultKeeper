@@ -39,7 +39,7 @@
           <li><a href="{{ url_for('vaults.vaults_list') }}" class="{{ 'active' if request.endpoint in ('vaults.vaults_list', 'vaults.vault_detail', 'vaults.vault_setup_uri') else '' }}">Vaults</a></li>
           {% if session.is_admin %}
           <li><a href="{{ url_for('vaults.provision') }}" class="{{ 'active' if request.endpoint == 'vaults.provision' else '' }}">Provision</a></li>
-          <li><a href="{{ url_for('backup.backups_list') }}" class="{{ 'active' if request.endpoint in ('backup.backups_list', 'backup.backup_new', 'backup.backup_restore') else '' }}">Backups</a></li>
+          <li><a href="{{ url_for('backup.backups_list') }}" class="{{ 'active' if request.endpoint in ('backup.backups_list', 'backup.backup_new', 'backup.backup_upload', 'backup.backup_restore') else '' }}">Backups</a></li>
           <li><a href="{{ url_for('main.settings') }}" class="{{ 'active' if request.endpoint == 'main.settings' else '' }}">Settings</a></li>
           <li><a href="{{ url_for('audit.audit_log') }}" class="{{ 'active' if request.endpoint == 'audit.audit_log' else '' }}">Audit</a></li>
           {% endif %}
@@ -67,7 +67,7 @@
         <li><a href="{{ url_for('vaults.vaults_list') }}" class="{{ 'active' if request.endpoint in ('vaults.vaults_list', 'vaults.vault_detail', 'vaults.vault_setup_uri') else '' }}">Vaults</a></li>
         {% if session.is_admin %}
         <li><a href="{{ url_for('vaults.provision') }}" class="{{ 'active' if request.endpoint == 'vaults.provision' else '' }}">Provision</a></li>
-        <li><a href="{{ url_for('backup.backups_list') }}" class="{{ 'active' if request.endpoint in ('backup.backups_list', 'backup.backup_new', 'backup.backup_restore') else '' }}">Backups</a></li>
+        <li><a href="{{ url_for('backup.backups_list') }}" class="{{ 'active' if request.endpoint in ('backup.backups_list', 'backup.backup_new', 'backup.backup_upload', 'backup.backup_restore') else '' }}">Backups</a></li>
         <li><a href="{{ url_for('main.settings') }}" class="{{ 'active' if request.endpoint == 'main.settings' else '' }}">Settings</a></li>
         <li><a href="{{ url_for('audit.audit_log') }}" class="{{ 'active' if request.endpoint == 'audit.audit_log' else '' }}">Audit</a></li>
         {% endif %}

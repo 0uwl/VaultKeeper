@@ -1,3 +1,4 @@
+import io
 import json
 import os
 import tarfile
@@ -216,6 +217,44 @@ def test_read_backup_manifest_corrupt_file_raises(couchdb_client: CouchDB, tmp_p
 def test_read_backup_manifest_missing_file_raises(couchdb_client: CouchDB, tmp_path):
     with pytest.raises(CouchDBError):
         couchdb_client.read_backup_manifest(str(tmp_path / "nonexistent.tar.gz"))
+
+
+def _write_fake_archive(path: str, manifest: dict, ndjson_members: list[str] = ()) -> None:
+    with tarfile.open(path, "w:gz") as tar:
+        for name in ndjson_members:
+            content = b"\n"
+            info = tarfile.TarInfo(name=name)
+            info.size = len(content)
+            tar.addfile(info, io.BytesIO(content))
+        manifest_bytes = json.dumps(manifest).encode()
+        info = tarfile.TarInfo(name="manifest.json")
+        info.size = len(manifest_bytes)
+        tar.addfile(info, io.BytesIO(manifest_bytes))
+
+
+def test_read_backup_manifest_missing_databases_field_raises(couchdb_client: CouchDB, tmp_path):
+    bad = str(tmp_path / "bad.tar.gz")
+    _write_fake_archive(bad, manifest={"version": 1})
+    with pytest.raises(CouchDBError):
+        couchdb_client.read_backup_manifest(bad)
+
+
+def test_read_backup_manifest_missing_ndjson_for_listed_db_raises(couchdb_client: CouchDB, tmp_path):
+    bad = str(tmp_path / "bad.tar.gz")
+    _write_fake_archive(bad, manifest={"version": 1, "databases": {"vault_a_b": {}}})
+    with pytest.raises(CouchDBError):
+        couchdb_client.read_backup_manifest(bad)
+
+
+def test_read_backup_manifest_accepts_archive_with_matching_ndjson(couchdb_client: CouchDB, tmp_path):
+    good = str(tmp_path / "good.tar.gz")
+    _write_fake_archive(
+        good,
+        manifest={"version": 1, "databases": {"vault_a_b": {}}},
+        ndjson_members=["vault_a_b.ndjson"],
+    )
+    manifest = couchdb_client.read_backup_manifest(good)
+    assert manifest["databases"] == {"vault_a_b": {}}
 
 
 # ---------------------------------------------------------------------------

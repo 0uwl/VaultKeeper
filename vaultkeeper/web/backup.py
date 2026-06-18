@@ -11,6 +11,7 @@ from flask import (
     send_file,
     url_for,
 )
+from werkzeug.utils import secure_filename
 
 from vaultkeeper.client import BACKUP_DIR_DEFAULT, CouchDBError
 from vaultkeeper.web.helpers import _current_user, _get_client, admin_required
@@ -94,6 +95,51 @@ def backup_new():
         vaults = []
 
     return render_template("backup_new.html", vaults=vaults)
+
+
+@backup.route("/backups/upload", methods=["GET", "POST"])
+@admin_required
+def backup_upload():
+    if request.method == "POST":
+        file = request.files.get("archive")
+        if not file or not file.filename:
+            flash("Select a backup archive to upload.", "warning")
+            return redirect(url_for("backup.backup_upload"))
+
+        filename = secure_filename(file.filename)
+        if not filename.endswith(".tar.gz"):
+            flash("Backup archives must be a .tar.gz file.", "error")
+            return redirect(url_for("backup.backup_upload"))
+
+        backup_dir = _backup_dir()
+        os.makedirs(backup_dir, exist_ok=True)
+        dest_path = os.path.join(backup_dir, filename)
+        if os.path.exists(dest_path):
+            flash(f"A backup named '{filename}' already exists.", "error")
+            return redirect(url_for("backup.backup_upload"))
+
+        file.save(dest_path)
+
+        client = _get_client()
+        try:
+            manifest = client.read_backup_manifest(dest_path)
+        except CouchDBError as e:
+            os.remove(dest_path)
+            flash(f"Upload rejected - not a usable backup archive: {e}", "error")
+            return redirect(url_for("backup.backup_upload"))
+
+        client.log_audit_event(
+            "backup.upload",
+            actor=_current_user(),
+            details={
+                "filename": filename,
+                "databases": list(manifest["databases"].keys()),
+            },
+        )
+        flash(f"Backup '{filename}' uploaded ({len(manifest['databases'])} database(s)).", "success")
+        return redirect(url_for("backup.backups_list"))
+
+    return render_template("backup_upload.html")
 
 
 @backup.route("/backups/<filename>/download")

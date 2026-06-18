@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Upload Backup - VaultKeeper{% endblock %}
+
+{% block content %}
+<div class="flex items-center gap-3 mb-6">
+  <h1 class="text-2xl font-bold">Upload backup</h1>
+  <a href="{{ url_for('backup.backups_list') }}" class="btn btn-ghost btn-sm">← Backups</a>
+</div>
+
+<form method="post" enctype="multipart/form-data">
+  <div class="card bg-base-200 mb-6">
+    <div class="card-body">
+      <h2 class="card-title text-base">Backup archive</h2>
+      <p class="text-base-content/50 text-sm mb-3">
+        Upload a VaultKeeper backup archive (<span class="font-mono">.tar.gz</span>) created by
+        this or another VaultKeeper instance. The archive's <span class="font-mono">manifest.json</span>
+        is checked before it's accepted, so anything else will be rejected.
+      </p>
+      <input type="file" name="archive" accept=".tar.gz,application/gzip" required
+             class="file-input file-input-bordered w-full max-w-md">
+    </div>
+  </div>
+
+  <div class="flex gap-3">
+    <button type="submit" class="btn btn-primary">Upload</button>
+    <a href="{{ url_for('backup.backups_list') }}" class="btn btn-ghost">Cancel</a>
+  </div>
+</form>
+{% endblock %}
