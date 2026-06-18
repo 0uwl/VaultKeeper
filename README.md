@@ -76,6 +76,8 @@ docker exec -it vk-server cli provision alice notes
 - **Setup URI generation** - produce Obsidian LiveSync setup URIs with one click
 - **Audit log** - every significant action (logins, vault creation, user changes) is recorded
   and viewable by the admin at `/audit` and on the dashboard
+- **Backup and restore** - create `.tar.gz` backups of vaults, users, and config from the
+  web UI or CLI (`cli backup create`, optionally streamed to stdout for piping out of the container)
 
 ---
 

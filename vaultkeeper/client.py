@@ -670,13 +670,15 @@ class CouchDB:
 
     def backup(
         self,
-        dest_path: str,
+        dest_path: str | None,
         databases: list[str],
         include_users: bool = False,
         include_config: bool = False,
+        fileobj=None,
     ) -> dict:
         """
-        Create a .tar.gz backup archive at dest_path.
+        Create a .tar.gz backup archive at dest_path, or write it to fileobj
+        (a binary writable stream, e.g. sys.stdout.buffer) if given instead.
 
         Each database is written as an NDJSON file inside the archive. The first
         line of each file is a header object containing the security document;
@@ -688,15 +690,19 @@ class CouchDB:
         if include_config and CONFIG_DB not in dbs:
             dbs.append(CONFIG_DB)
 
-        os.makedirs(os.path.dirname(os.path.abspath(dest_path)), exist_ok=True)
-
         manifest: dict = {
             "version": 1,
             "created_at": datetime.now(timezone.utc).isoformat(),
             "databases": {},
         }
 
-        with tarfile.open(dest_path, "w:gz") as tar:
+        if fileobj is not None:
+            tar_ctx = tarfile.open(fileobj=fileobj, mode="w|gz")
+        else:
+            os.makedirs(os.path.dirname(os.path.abspath(dest_path)), exist_ok=True)
+            tar_ctx = tarfile.open(dest_path, "w:gz")
+
+        with tar_ctx as tar:
             for db in dbs:
                 r = self._session.get(
                     self._url(db, "_all_docs"),
@@ -733,7 +739,10 @@ class CouchDB:
             info.size = len(manifest_bytes)
             tar.addfile(info, io.BytesIO(manifest_bytes))
 
-        LOGGER.info(f"Backup created at '{dest_path}' covering {len(dbs)} database(s)")
+        if fileobj is not None:
+            LOGGER.info(f"Backup streamed to stdout covering {len(dbs)} database(s)")
+        else:
+            LOGGER.info(f"Backup created at '{dest_path}' covering {len(dbs)} database(s)")
         return manifest
 
     def restore(

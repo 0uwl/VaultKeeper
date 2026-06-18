@@ -471,15 +471,18 @@ def _default_backup_dir() -> str:
               help="Include the _users database.")
 @click.option("--config", "include_config", is_flag=True,
               help="Include the vaultkeeper_data database.")
+@click.option("--stdout", "to_stdout", is_flag=True,
+              help="Write the archive to stdout instead of a file, so it can be piped "
+                   "(e.g. `docker exec vk-server cli backup create --stdout --all-vaults > backup.tar.gz`). "
+                   "Mutually exclusive with --output-dir; informational messages go to stderr.")
 @click.option("--output-dir", "output_dir", default=None, envvar="VAULTKEEPER_BACKUP_DIR",
               help="Directory to write the backup archive (default: /backups).")
 def backup_create(host, port, protocol, admin, password, vaults, all_vaults, include_users,
-                  include_config, output_dir):
+                  include_config, to_stdout, output_dir):
     """Create a backup archive of selected databases."""
     from datetime import datetime, timezone
 
     client = _get_client(host, port, protocol, admin, password)
-    out_dir = output_dir or _default_backup_dir()
 
     if all_vaults:
         try:
@@ -493,6 +496,24 @@ def backup_create(host, port, protocol, admin, password, vaults, all_vaults, inc
     if not databases and not include_users and not include_config:
         _abort("Specify at least one of --vault, --all-vaults, --users, or --config.")
 
+    if to_stdout:
+        try:
+            manifest = client.backup(
+                dest_path=None,
+                databases=databases,
+                include_users=include_users,
+                include_config=include_config,
+                fileobj=click.get_binary_stream("stdout"),
+            )
+            for db, meta in manifest["databases"].items():
+                label = meta.get("vault_name") or db
+                click.echo(click.style(f"  ✓ {label}  ({meta['doc_count']} docs)", fg="green"), err=True)
+        except CouchDBError as e:
+            click.echo(click.style(f"  ✗ {e}", fg="red"), err=True)
+            sys.exit(1)
+        return
+
+    out_dir = output_dir or _default_backup_dir()
     ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     filename = f"vaultkeeper_backup_{ts}.tar.gz"
     dest_path = os.path.join(out_dir, filename)

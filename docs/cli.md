@@ -33,6 +33,11 @@ cli vault compact <db_name>                   # Compact a vault database
 cli vault setup-uri <username> <vault_name>   # Generate a LiveSync setup URI
 
 cli provision <username> <vault_name>         # Create user + vault + setup URI in one step
+
+cli backup create [--vault DB_NAME ...]       # Create a backup archive (.tar.gz) of selected databases
+cli backup list                               # List backup archives
+cli backup restore <filename>                 # Restore databases from a backup archive
+cli backup delete <filename>                  # Delete a backup archive
 ```
 
 ## `server login` - saving credentials
@@ -100,3 +105,45 @@ Vault databases use CouchDB's `_security` document to restrict access:
 
 Only the vault owner and server admins can read or write the database. The CLI always
 connects as the server admin.
+
+## Backup and restore
+
+`cli backup create` writes a `.tar.gz` archive: one NDJSON file per database (first
+line is a header with the database's `_security` document, remaining lines are its
+documents), plus a `manifest.json` describing the archive. By default the archive is
+saved to `$VAULTKEEPER_BACKUP_DIR` (default `/backups`), overridable with `--output-dir`.
+
+Choose what to back up with `--vault <db_name>` (repeatable), `--all-vaults`, `--users`
+(the `_users` database), and/or `--config` (the `vaultkeeper_data` database). At least
+one of these is required.
+
+```bash
+docker exec vk-server cli backup create --all-vaults --users
+```
+
+### Streaming a backup to stdout
+
+`docker exec` doesn't give direct filesystem access to the host, so to get a backup
+archive out of the container without a bind mount, pass `--stdout` to write the archive
+to stdout instead of a file and pipe it to a local file:
+
+```bash
+docker exec vk-server cli backup create --stdout --all-vaults > ./backup.tar.gz
+```
+
+`--stdout` is mutually exclusive with `--output-dir` - the archive is streamed and never
+written to disk inside the container. All status/progress messages are written to stderr
+in this mode so they don't end up mixed into the binary archive on stdout.
+
+### Listing, restoring, and deleting archives
+
+```
+cli backup list                              # List archives in --output-dir
+cli backup restore <filename> [--databases]  # Restore all or selected databases from an archive
+cli backup delete <filename>                 # Delete an archive
+```
+
+Restoring drops and recreates vault databases for a clean restore. The `_users` and
+`vaultkeeper_data` databases are merged instead: documents present in the backup
+overwrite existing documents with the same ID, but documents created after the backup
+was taken are left in place.
