@@ -148,6 +148,7 @@ class CouchDB:
 
         _put("chttpd",      "require_valid_user",    "true")
         _put("chttpd_auth", "require_valid_user",    "true")
+        _put("chttpd",      "require_valid_user_except_for_up", "true")
         _put("httpd",       "WWW-Authenticate",      'Basic realm="couchdb"')
         _put("httpd",       "enable_cors",           "true")
         _put("chttpd",      "enable_cors",           "true")
