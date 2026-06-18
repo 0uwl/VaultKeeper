@@ -49,6 +49,7 @@
         <td class="text-end">
           <div class="flex justify-end gap-2">
             <a href="{{ url_for('backup.backup_download', filename=b.filename) }}"
+               hx-boost="false"
                class="btn btn-xs btn-ghost">Download</a>
             <a href="{{ url_for('backup.backup_restore', filename=b.filename) }}"
                class="btn btn-xs btn-outline btn-primary">Restore</a>
