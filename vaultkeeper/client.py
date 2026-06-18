@@ -2,10 +2,12 @@
 vaultkeeper.client - CouchDB/LiveSync operations for VaultKeeper.
 
 Reads connection settings from environment variables:
-  COUCHDB_HOST               CouchDB base URL        (default: http://localhost:5984)
+  COUCHDB_HOST               CouchDB hostname or IP  (default: localhost)
+  COUCHDB_PORT               CouchDB port            (default: 5984)
+  COUCHDB_PROTOCOL           CouchDB protocol        (default: http)
   COUCHDB_USER               Admin username
   COUCHDB_PASSWORD           Admin password
-  COUCHDB_PUBLIC_URL         External URL embedded in setup URIs (falls back to COUCHDB_HOST)
+  COUCHDB_PUBLIC_URL         External URL embedded in setup URIs (falls back to the built host URL)
   LIVESYNC_SETUP_URI_SCRIPT  Path to generate_setupuri.ts (default: /scripts/generate_setupuri.ts)
 """
 
@@ -80,12 +82,17 @@ class CouchDB:
     def __init__(
         self,
         host: str | None = None,
+        port: int | str | None = None,
+        protocol: str | None = None,
         username: str | None = None,
         password: str | None = None,
         public_url: str | None = None,
         setup_uri_script: str | None = None,
     ) -> None:
-        self.host = (host or os.environ.get("COUCHDB_HOST", "http://localhost:5984")).rstrip("/")
+        self.hostname = (host or os.environ.get("COUCHDB_HOST", "localhost")).rstrip("/")
+        self.port = port or os.environ.get("COUCHDB_PORT", "5984")
+        self.protocol = protocol or os.environ.get("COUCHDB_PROTOCOL", "http")
+        self.host = f"{self.protocol}://{self.hostname}:{self.port}"
         self.username = username or os.environ.get("COUCHDB_USER", "")
         self.password = password or os.environ.get("COUCHDB_PASSWORD", "")
         raw_public = public_url or os.environ.get("COUCHDB_PUBLIC_URL", "")

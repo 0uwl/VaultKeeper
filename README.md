@@ -58,10 +58,12 @@ docker exec -it vk-server cli provision alice notes
 
 | Variable             | Description                                          | Default                      |
 |----------------------|------------------------------------------------------|------------------------------|
-| `COUCHDB_HOST`       | CouchDB base URL                                     | `http://localhost:5984`      |
+| `COUCHDB_HOST`       | CouchDB hostname or IP                               | `localhost`                  |
+| `COUCHDB_PORT`       | CouchDB port                                         | `5984`                       |
+| `COUCHDB_PROTOCOL`   | CouchDB protocol (`http` or `https`)                 | `http`                       |
 | `COUCHDB_USER`       | Admin username                                       | prompted                     |
 | `COUCHDB_PASSWORD`   | Admin password                                       | prompted                     |
-| `COUCHDB_PUBLIC_URL` | External URL embedded in setup URIs                  | falls back to `COUCHDB_HOST` |
+| `COUCHDB_PUBLIC_URL` | External URL embedded in setup URIs                  | falls back to the built `COUCHDB_HOST` URL |
 | `LOG_DIR`            | Directory inside the container where logs are stored | `/var/log/`                  |
 
 ---

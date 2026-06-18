@@ -7,8 +7,8 @@ Installed inside the container at `/usr/local/bin/cli` and invoked via `docker e
 
 Connection settings are resolved in the following order for each command:
 
-1. CLI flags (`--host`, `--admin`, `--password`)
-2. Environment variables (`COUCHDB_HOST`, `COUCHDB_USER`, `COUCHDB_PASSWORD`)
+1. CLI flags (`--host`, `--port`, `--protocol`, `--admin`, `--password`)
+2. Environment variables (`COUCHDB_HOST`, `COUCHDB_PORT`, `COUCHDB_PROTOCOL`, `COUCHDB_USER`, `COUCHDB_PASSWORD`)
 3. Credentials file (`~/.vaultkeeper/credentials`)
 4. Interactive prompt
 
@@ -37,11 +37,14 @@ cli provision <username> <vault_name>         # Create user + vault + setup URI 
 
 ## `server login` - saving credentials
 
-`cli server login` prompts for host, username, password, and optional public URL,
-verifies the credentials against CouchDB, then writes a plain-text credentials file:
+`cli server login` prompts for host, port, protocol, username, password, and optional
+public URL, verifies the credentials against CouchDB, then writes a plain-text
+credentials file:
 
 ```
-COUCHDB_HOST=http://localhost:5984
+COUCHDB_HOST=localhost
+COUCHDB_PORT=5984
+COUCHDB_PROTOCOL=http
 COUCHDB_USER=admin
 COUCHDB_PASSWORD=secret
 COUCHDB_PUBLIC_URL=https://couchdb.example.com

@@ -2,8 +2,8 @@
 couchdb-cli - VaultKeeper CLI.
 
 Credential resolution order (highest to lowest priority):
-  1. CLI flags (--host, --admin, --password)
-  2. Environment variables (COUCHDB_HOST, COUCHDB_USER, COUCHDB_PASSWORD)
+  1. CLI flags (--host, --port, --protocol, --admin, --password)
+  2. Environment variables (COUCHDB_HOST, COUCHDB_PORT, COUCHDB_PROTOCOL, COUCHDB_USER, COUCHDB_PASSWORD)
   3. Credentials file (~/.vaultkeeper/credentials, or $VAULTKEEPER_CREDENTIALS)
   4. Interactive prompt
 """
@@ -37,13 +37,21 @@ def _load_credentials() -> dict:
     return result
 
 
-def _get_client(host: str | None, admin: str | None, password: str | None) -> CouchDB:
+def _get_client(
+    host: str | None,
+    port: str | None,
+    protocol: str | None,
+    admin: str | None,
+    password: str | None,
+) -> CouchDB:
     """
     Build a CouchDB client. Falls back to the credentials file, then prompts,
     if CLI flags and env vars don't supply a value.
     """
     creds = _load_credentials()
     host = host or creds.get("COUCHDB_HOST")
+    port = port or creds.get("COUCHDB_PORT")
+    protocol = protocol or creds.get("COUCHDB_PROTOCOL")
     admin = admin or creds.get("COUCHDB_USER")
     password = password or creds.get("COUCHDB_PASSWORD")
     public_url = os.environ.get("COUCHDB_PUBLIC_URL") or creds.get("COUCHDB_PUBLIC_URL")
@@ -53,7 +61,10 @@ def _get_client(host: str | None, admin: str | None, password: str | None) -> Co
     if not password:
         password = click.prompt("Admin password", hide_input=True)
 
-    return CouchDB(host=host, username=admin, password=password, public_url=public_url or None)
+    return CouchDB(
+        host=host, port=port, protocol=protocol,
+        username=admin, password=password, public_url=public_url or None,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -103,7 +114,10 @@ def _fmt_bytes(b: int) -> str:
 # ---------------------------------------------------------------------------
 
 def common_options(f):
-    @click.option("--host", envvar="COUCHDB_HOST", default=None, help="CouchDB base URL.")
+    @click.option("--host", envvar="COUCHDB_HOST", default=None, help="CouchDB hostname or IP.")
+    @click.option("--port", envvar="COUCHDB_PORT", default=None, help="CouchDB port.")
+    @click.option("--protocol", envvar="COUCHDB_PROTOCOL", default=None,
+                  type=click.Choice(["http", "https"]), help="CouchDB protocol.")
     @click.option("--admin", envvar="COUCHDB_USER", default=None, help="Admin username.")
     @click.option("--password", envvar="COUCHDB_PASSWORD", default=None, help="Admin password.")
     @functools.wraps(f)
@@ -133,9 +147,9 @@ def server():
 
 @server.command("init")
 @common_options
-def server_init(host, admin, password):
+def server_init(host, port, protocol, admin, password):
     """Apply LiveSync CouchDB configuration (idempotent)."""
-    client = _get_client(host, admin, password)
+    client = _get_client(host, port, protocol, admin, password)
     try:
         _info("Configuring CouchDB for LiveSync...")
         client.server_init()
@@ -145,27 +159,35 @@ def server_init(host, admin, password):
 
 
 @server.command("login")
-@click.option("--host", default=None, help="CouchDB base URL.")
+@click.option("--host", default=None, help="CouchDB hostname or IP.")
+@click.option("--port", default=None, help="CouchDB port.")
+@click.option("--protocol", default=None, type=click.Choice(["http", "https"]),
+              help="CouchDB protocol.")
 @click.option("--public-url", "public_url", envvar="COUCHDB_PUBLIC_URL",
               default=None, help="External URL for LiveSync clients.")
-def server_login(host, public_url):
+def server_login(host, port, protocol, public_url):
     """Save CouchDB credentials to a file for use by future CLI invocations.
 
     Credentials are stored in plain text at ~/.vaultkeeper/credentials
     (override path with $VAULTKEEPER_CREDENTIALS).
     """
-    host = host or click.prompt("CouchDB host", default="http://localhost:5984")
+    host = host or click.prompt("CouchDB host", default="localhost")
+    port = port or click.prompt("CouchDB port", default="5984")
+    protocol = protocol or click.prompt(
+        "CouchDB protocol", default="http", type=click.Choice(["http", "https"]),
+    )
     admin = click.prompt("Admin username")
     password = click.prompt("Admin password", hide_input=True)
+    base_url = f"{protocol}://{host}:{port}"
     if not public_url:
         public_url = click.prompt(
             "Public URL for LiveSync clients",
-            default=host,
+            default=base_url,
         )
 
     _info("Verifying credentials...")
     try:
-        CouchDB(host=host, username=admin, password=password).ping()
+        CouchDB(host=host, port=port, protocol=protocol, username=admin, password=password).ping()
     except CouchDBError as e:
         _abort(f"Could not connect to CouchDB: {e}")
 
@@ -175,9 +197,11 @@ def server_login(host, public_url):
 
     with open(creds_path, "w") as f:
         f.write(f"COUCHDB_HOST={host}\n")
+        f.write(f"COUCHDB_PORT={port}\n")
+        f.write(f"COUCHDB_PROTOCOL={protocol}\n")
         f.write(f"COUCHDB_USER={admin}\n")
         f.write(f"COUCHDB_PASSWORD={password}\n")
-        if public_url and public_url != host:
+        if public_url and public_url != base_url:
             f.write(f"COUCHDB_PUBLIC_URL={public_url}\n")
 
     _ok(f"Credentials saved to {creds_path}")
@@ -201,9 +225,9 @@ def user():
     prompt=True, hide_input=True, confirmation_prompt=True,
     help="Password for the new user.",
 )
-def user_create(host, admin, password, username, user_password):
+def user_create(host, port, protocol, admin, password, username, user_password):
     """Create a CouchDB user."""
-    client = _get_client(host, admin, password)
+    client = _get_client(host, port, protocol, admin, password)
     try:
         _info(f"Creating user '{username}'...")
         client.create_user(username, user_password)
@@ -217,14 +241,14 @@ def user_create(host, admin, password, username, user_password):
 @click.argument("username")
 @click.option("--delete-vaults", is_flag=True, help="Also delete all of the user's vaults.")
 @click.option("--yes", is_flag=True, help="Skip confirmation prompt.")
-def user_delete(host, admin, password, username, delete_vaults, yes):
+def user_delete(host, port, protocol, admin, password, username, delete_vaults, yes):
     """Delete a CouchDB user."""
     if not yes:
         message = f"Delete user '{username}'? This cannot be undone."
         if delete_vaults:
             message = f"Delete user '{username}' and all of their vaults? This cannot be undone."
         click.confirm(message, abort=True)
-    client = _get_client(host, admin, password)
+    client = _get_client(host, port, protocol, admin, password)
     try:
         client.delete_user(username, delete_vaults=delete_vaults)
         _ok(f"User '{username}' deleted.")
@@ -234,9 +258,9 @@ def user_delete(host, admin, password, username, delete_vaults, yes):
 
 @user.command("list")
 @common_options
-def user_list(host, admin, password):
+def user_list(host, port, protocol, admin, password):
     """List all CouchDB users."""
-    client = _get_client(host, admin, password)
+    client = _get_client(host, port, protocol, admin, password)
     try:
         users = client.list_users()
     except CouchDBError as e:
@@ -256,9 +280,9 @@ def user_list(host, admin, password):
     prompt=True, hide_input=True, confirmation_prompt=True,
     help="New password.",
 )
-def user_passwd(host, admin, password, username, new_password):
+def user_passwd(host, port, protocol, admin, password, username, new_password):
     """Change a user's password."""
-    client = _get_client(host, admin, password)
+    client = _get_client(host, port, protocol, admin, password)
     try:
         client.change_password(username, new_password)
         _ok(f"Password updated for '{username}'.")
@@ -279,9 +303,9 @@ def vault():
 @common_options
 @click.argument("username")
 @click.argument("vault_name")
-def vault_create(host, admin, password, username, vault_name):
+def vault_create(host, port, protocol, admin, password, username, vault_name):
     """Create and secure a vault database for a user."""
-    client = _get_client(host, admin, password)
+    client = _get_client(host, port, protocol, admin, password)
     try:
         _info(f"Creating vault '{vault_name}' for '{username}'...")
         db_name = client.create_vault(username, vault_name)
@@ -294,11 +318,11 @@ def vault_create(host, admin, password, username, vault_name):
 @common_options
 @click.argument("db_name")
 @click.option("--yes", is_flag=True, help="Skip confirmation prompt.")
-def vault_delete(host, admin, password, db_name, yes):
+def vault_delete(host, port, protocol, admin, password, db_name, yes):
     """Delete a vault database."""
     if not yes:
         click.confirm(f"Delete '{db_name}'? ALL DATA WILL BE LOST.", abort=True)
-    client = _get_client(host, admin, password)
+    client = _get_client(host, port, protocol, admin, password)
     try:
         client.delete_vault(db_name)
         _ok(f"Vault '{db_name}' deleted.")
@@ -309,9 +333,9 @@ def vault_delete(host, admin, password, db_name, yes):
 @vault.command("list")
 @common_options
 @click.argument("username")
-def vault_list(host, admin, password, username):
+def vault_list(host, port, protocol, admin, password, username):
     """List all vault databases belonging to a user."""
-    client = _get_client(host, admin, password)
+    client = _get_client(host, port, protocol, admin, password)
     try:
         vaults = client.list_vaults_for_user(username)
     except CouchDBError as e:
@@ -326,9 +350,9 @@ def vault_list(host, admin, password, username):
 @vault.command("info")
 @common_options
 @click.argument("db_name")
-def vault_info(host, admin, password, db_name):
+def vault_info(host, port, protocol, admin, password, db_name):
     """Show size and document statistics for a vault."""
-    client = _get_client(host, admin, password)
+    client = _get_client(host, port, protocol, admin, password)
     try:
         d = client.vault_info(db_name)
     except CouchDBError as e:
@@ -346,9 +370,9 @@ def vault_info(host, admin, password, db_name):
 @vault.command("compact")
 @common_options
 @click.argument("db_name")
-def vault_compact(host, admin, password, db_name):
+def vault_compact(host, port, protocol, admin, password, db_name):
     """Compact a vault database to reclaim disk space."""
-    client = _get_client(host, admin, password)
+    client = _get_client(host, port, protocol, admin, password)
     try:
         client.compact_vault(db_name)
         _ok(f"Compaction started for '{db_name}'. Runs in the background.")
@@ -369,10 +393,10 @@ def vault_compact(host, admin, password, db_name):
               help="E2E encryption passphrase (auto-generated if omitted).")
 @click.option("--uri-passphrase", "uri_passphrase", default=None,
               help="Passphrase to encrypt the setup URI (auto-generated if omitted).")
-def vault_setup_uri(host, admin, password, username, vault_name,
+def vault_setup_uri(host, port, protocol, admin, password, username, vault_name,
                     user_password, passphrase, uri_passphrase):
     """Generate a LiveSync setup URI for easy plugin configuration."""
-    client = _get_client(host, admin, password)
+    client = _get_client(host, port, protocol, admin, password)
     try:
         db_name = client.find_vault_by_name(username, vault_name)
         if db_name is None:
@@ -403,10 +427,10 @@ def vault_setup_uri(host, admin, password, username, vault_name,
               help="E2E encryption passphrase (auto-generated if omitted).")
 @click.option("--uri-passphrase", "uri_passphrase", default=None,
               help="Passphrase to encrypt the setup URI (auto-generated if omitted).")
-def provision(host, admin, password, username, vault_name,
+def provision(host, port, protocol, admin, password, username, vault_name,
               user_password, passphrase, uri_passphrase):
     """Create a user, their first vault, and a setup URI in one step."""
-    client = _get_client(host, admin, password)
+    client = _get_client(host, port, protocol, admin, password)
     try:
         _info(f"Creating user '{username}'...")
         client.create_user(username, user_password)
@@ -449,12 +473,12 @@ def _default_backup_dir() -> str:
               help="Include the vaultkeeper_data database.")
 @click.option("--output-dir", "output_dir", default=None, envvar="VAULTKEEPER_BACKUP_DIR",
               help="Directory to write the backup archive (default: /backups).")
-def backup_create(host, admin, password, vaults, all_vaults, include_users,
+def backup_create(host, port, protocol, admin, password, vaults, all_vaults, include_users,
                   include_config, output_dir):
     """Create a backup archive of selected databases."""
     from datetime import datetime, timezone
 
-    client = _get_client(host, admin, password)
+    client = _get_client(host, port, protocol, admin, password)
     out_dir = output_dir or _default_backup_dir()
 
     if all_vaults:
@@ -493,9 +517,9 @@ def backup_create(host, admin, password, vaults, all_vaults, include_users,
 @common_options
 @click.option("--output-dir", "output_dir", default=None, envvar="VAULTKEEPER_BACKUP_DIR",
               help="Directory to search for backup archives.")
-def backup_list(host, admin, password, output_dir):
+def backup_list(host, port, protocol, admin, password, output_dir):
     """List all backup archives."""
-    client = _get_client(host, admin, password)
+    client = _get_client(host, port, protocol, admin, password)
     out_dir = output_dir or _default_backup_dir()
     try:
         backups = client.list_backups(out_dir)
@@ -527,9 +551,9 @@ def backup_list(host, admin, password, output_dir):
 @click.option("--output-dir", "output_dir", default=None, envvar="VAULTKEEPER_BACKUP_DIR",
               help="Directory containing the backup archive.")
 @click.option("--yes", is_flag=True, help="Skip confirmation prompt.")
-def backup_restore(host, admin, password, filename, databases, output_dir, yes):
+def backup_restore(host, port, protocol, admin, password, filename, databases, output_dir, yes):
     """Restore databases from a backup archive."""
-    client = _get_client(host, admin, password)
+    client = _get_client(host, port, protocol, admin, password)
     out_dir = output_dir or _default_backup_dir()
     path = os.path.join(out_dir, os.path.basename(filename))
 
@@ -570,9 +594,9 @@ def backup_restore(host, admin, password, filename, databases, output_dir, yes):
 @click.option("--output-dir", "output_dir", default=None, envvar="VAULTKEEPER_BACKUP_DIR",
               help="Directory containing the backup archive.")
 @click.option("--yes", is_flag=True, help="Skip confirmation prompt.")
-def backup_delete(host, admin, password, filename, output_dir, yes):
+def backup_delete(host, port, protocol, admin, password, filename, output_dir, yes):
     """Delete a backup archive."""
-    client = _get_client(host, admin, password)
+    client = _get_client(host, port, protocol, admin, password)
     out_dir = output_dir or _default_backup_dir()
     path = os.path.join(out_dir, os.path.basename(filename))
 

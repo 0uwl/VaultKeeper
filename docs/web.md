@@ -18,10 +18,12 @@ for day-to-day operations. Runs on port **5985** alongside CouchDB on port **598
 | Variable | Required | Description |
 |---|---|---|
 | `SECRET_KEY` | **Yes** | Signs session cookies. Must be stable and shared across all workers. Generate with `openssl rand -hex 32`. |
-| `COUCHDB_HOST` | No | CouchDB base URL (default: `http://localhost:5984`) |
+| `COUCHDB_HOST` | No | CouchDB hostname or IP (default: `localhost`) |
+| `COUCHDB_PORT` | No | CouchDB port (default: `5984`) |
+| `COUCHDB_PROTOCOL` | No | CouchDB protocol, `http` or `https` (default: `http`) |
 | `COUCHDB_USER` | No | CouchDB admin username |
 | `COUCHDB_PASSWORD` | No | CouchDB admin password |
-| `COUCHDB_PUBLIC_URL` | No | External CouchDB URL for setup URIs (falls back to `COUCHDB_HOST`) |
+| `COUCHDB_PUBLIC_URL` | No | External CouchDB URL for setup URIs (falls back to the built `COUCHDB_HOST` URL) |
 | `VAULTKEEPER_WEB_PORT` | No | Web server port (default: `5985`) |
 | `TZ` | No | IANA timezone name for audit log timestamps (default: `UTC`). Example: `Europe/Amsterdam`. |
 

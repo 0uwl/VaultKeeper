@@ -6,7 +6,7 @@ Manual run from repo root:  flask --app vaultkeeper.web.app:create_app run --hos
 Gunicorn:                   gunicorn "vaultkeeper.web.app:create_app()"  (picks up gunicorn.conf.py automatically)
 
 Environment variables:
-  COUCHDB_HOST, COUCHDB_USER, COUCHDB_PASSWORD, COUCHDB_PUBLIC_URL
+  COUCHDB_HOST, COUCHDB_PORT, COUCHDB_PROTOCOL, COUCHDB_USER, COUCHDB_PASSWORD, COUCHDB_PUBLIC_URL
   SECRET_KEY            - required; signs session cookies; generate with: openssl rand -hex 32
   VAULTKEEPER_WEB_PORT  - port for the web server (default: 5985)
 

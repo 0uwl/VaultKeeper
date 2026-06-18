@@ -26,7 +26,9 @@ services:
       vk-couchdb:
         condition: service_healthy
     environment:
-      COUCHDB_HOST: http://vk-couchdb:5984
+      COUCHDB_HOST: vk-couchdb
+      COUCHDB_PORT: ${COUCHDB_PORT:-5984}
+      COUCHDB_PROTOCOL: ${COUCHDB_PROTOCOL:-http}
       COUCHDB_USER: ${COUCHDB_USER:-admin}
       COUCHDB_PASSWORD: ${COUCHDB_PASSWORD:?COUCHDB_PASSWORD is required}
       COUCHDB_PUBLIC_URL: ${COUCHDB_PUBLIC_URL:-}
