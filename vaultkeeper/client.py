@@ -496,6 +496,7 @@ class CouchDB:
             result.append({
                 "db_name": db,
                 "vault_name": meta.get("vault_name", db) if meta else db,
+                "username": username,
             })
         return result
 

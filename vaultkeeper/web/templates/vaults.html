@@ -5,44 +5,69 @@
 <h1 class="text-2xl font-bold mb-5">Vaults</h1>
 
 {% if vaults %}
-<div class="overflow-x-auto mb-5">
-  <table class="table">
-    <thead>
-      <tr>
-        <th>Vault</th>
-        <th class="text-end">Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for vault in vaults %}
-      <tr>
-        <td>
-          <a href="{{ url_for('vaults.vault_detail', db_name=vault.db_name) }}" class="link link-hover font-semibold">
-            {{ vault.vault_name }}
-          </a>
-          {% if session.is_admin %}
-          <div class="text-xs text-base-content/40 font-mono">{{ vault.db_name }}</div>
-          {% endif %}
-        </td>
-        <td class="text-end">
-          <div class="flex justify-end gap-2">
-            <a href="{{ url_for('vaults.vault_detail', db_name=vault.db_name) }}" class="btn btn-xs btn-ghost">View</a>
-            <a href="{{ url_for('vaults.vault_setup_uri', db_name=vault.db_name) }}" class="btn btn-xs btn-outline btn-primary">Setup URI</a>
-            <button type="button" class="btn btn-xs btn-error btn-outline" x-data
-              @click="$dispatch('vk:confirm', {
-                title: 'Delete vault',
-                message: 'Delete vault {{ vault.vault_name }}? ALL DATA WILL BE LOST.',
-                onConfirm: () => document.getElementById('del-vault-{{ vault.db_name }}').requestSubmit()
-              })">Delete</button>
-            <form id="del-vault-{{ vault.db_name }}"
-                  method="post" action="{{ url_for('vaults.vault_delete', db_name=vault.db_name) }}"
-                  class="hidden"></form>
-          </div>
-        </td>
-      </tr>
+<script type="application/json" id="vault-usernames-data">{{ vaults | map(attribute='username') | list | tojson }}</script>
+<div x-data="{
+      filterUser: '',
+      allUsers: JSON.parse(document.getElementById('vault-usernames-data').textContent),
+      get visibleCount() {
+        return this.filterUser === '' ? this.allUsers.length : this.allUsers.filter(u => u === this.filterUser).length;
+      }
+    }">
+  {% if session.is_admin and usernames %}
+  <div class="mb-3">
+    <label class="block text-xs text-base-content/50 mb-1" for="vault-filter-user">Filter by user</label>
+    <select id="vault-filter-user" x-model="filterUser" class="select select-bordered select-sm w-48">
+      <option value="">All users</option>
+      {% for u in usernames %}
+      <option value="{{ u }}">{{ u }}</option>
       {% endfor %}
-    </tbody>
-  </table>
+    </select>
+  </div>
+  {% endif %}
+
+  <div class="overflow-x-auto mb-5">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Vault</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for vault in vaults %}
+        <tr data-username="{{ vault.username }}" x-show="filterUser === '' || filterUser === $el.dataset.username">
+          <td>
+            <a href="{{ url_for('vaults.vault_detail', db_name=vault.db_name) }}" class="link link-hover font-semibold">
+              {{ vault.vault_name }}
+            </a>
+            {% if session.is_admin %}
+            {% if vault.username %}
+            <span class="badge badge-sm badge-ghost ms-1">{{ vault.username }}</span>
+            {% endif %}
+            <div class="text-xs text-base-content/40 font-mono">{{ vault.db_name }}</div>
+            {% endif %}
+          </td>
+          <td class="text-end">
+            <div class="flex justify-end gap-2">
+              <a href="{{ url_for('vaults.vault_detail', db_name=vault.db_name) }}" class="btn btn-xs btn-ghost">View</a>
+              <a href="{{ url_for('vaults.vault_setup_uri', db_name=vault.db_name) }}" class="btn btn-xs btn-outline btn-primary">Setup URI</a>
+              <button type="button" class="btn btn-xs btn-error btn-outline" x-data
+                @click="$dispatch('vk:confirm', {
+                  title: 'Delete vault',
+                  message: 'Delete vault {{ vault.vault_name }}? ALL DATA WILL BE LOST.',
+                  onConfirm: () => document.getElementById('del-vault-{{ vault.db_name }}').requestSubmit()
+                })">Delete</button>
+              <form id="del-vault-{{ vault.db_name }}"
+                    method="post" action="{{ url_for('vaults.vault_delete', db_name=vault.db_name) }}"
+                    class="hidden"></form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p x-show="visibleCount === 0" class="text-base-content/50 text-sm mb-5">No vaults match this filter.</p>
 </div>
 {% else %}
 <p class="text-base-content/50 mb-5">No vaults yet.</p>
@@ -60,8 +85,12 @@
         {% if session.is_admin %}
         <div class="flex-1 min-w-28">
           <label class="block text-sm font-medium mb-1.5" for="username">Username</label>
-          <input id="username" name="username" type="text"
-                 class="input input-bordered w-full input-sm" placeholder="alice" required>
+          <select id="username" name="username" class="select select-bordered w-full select-sm" required>
+            <option value="" disabled selected>Select a user</option>
+            {% for u in all_users %}
+            <option value="{{ u }}">{{ u }}</option>
+            {% endfor %}
+          </select>
         </div>
         {% endif %}
         <div class="flex-1 min-w-28">
