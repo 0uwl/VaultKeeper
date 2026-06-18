@@ -400,6 +400,54 @@ def test_restore_all_databases_when_none_specified(couchdb_client: CouchDB, mana
                 pass
 
 
+def test_restore_vault_metadata_is_restored(couchdb_client: CouchDB, managed_vault, backup_dir):
+    """get_vault_meta should return the original vault_name after restore, not None."""
+    username, _, db_name = managed_vault
+    dest = os.path.join(backup_dir, "b.tar.gz")
+    couchdb_client.backup(dest, [db_name])
+    couchdb_client.delete_vault(db_name)
+    couchdb_client.restore(dest, [db_name])
+    meta = couchdb_client.get_vault_meta(db_name)
+    assert meta is not None
+    assert meta["vault_name"] == "testvault"
+    assert meta["username"] == username
+
+
+def test_restore_overwrites_existing_doc_with_same_id(couchdb_client: CouchDB, backup_dir):
+    """
+    Regression test: restoring vaultkeeper_data must overwrite a singleton doc
+    (server_settings) that already exists in the live database, not silently
+    skip it as a _bulk_docs conflict.
+    """
+    try:
+        couchdb_client.set_server_settings(default_max_vaults=5, default_max_vault_size_bytes=None)
+        dest = os.path.join(backup_dir, "b.tar.gz")
+        couchdb_client.backup(dest, [CONFIG_DB])
+
+        # Mutate the live doc after the backup was taken
+        couchdb_client.set_server_settings(default_max_vaults=999, default_max_vault_size_bytes=None)
+        assert couchdb_client.get_server_settings()["default_max_vaults"] == 999
+
+        couchdb_client.restore(dest, [CONFIG_DB])
+        assert couchdb_client.get_server_settings()["default_max_vaults"] == 5
+    finally:
+        couchdb_client.set_server_settings(None, None)
+
+
+def test_restore_does_not_delete_docs_absent_from_backup(couchdb_client: CouchDB, backup_dir):
+    """Docs created after the backup point must survive a restore of the same DB."""
+    dest = os.path.join(backup_dir, "b.tar.gz")
+    couchdb_client.backup(dest, [CONFIG_DB])
+    token = couchdb_client.create_invitation()
+    try:
+        couchdb_client.restore(dest, [CONFIG_DB])
+        # The invitation didn't exist at backup time, so a merge-restore must
+        # not remove it.
+        assert couchdb_client.get_invitation(token) is not None
+    finally:
+        couchdb_client.delete_invitation(token)
+
+
 def test_restore_db_not_in_archive_raises(couchdb_client: CouchDB, managed_vault, backup_dir):
     _, _, db_name = managed_vault
     dest = os.path.join(backup_dir, "b.tar.gz")

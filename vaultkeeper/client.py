@@ -699,13 +699,14 @@ class CouchDB:
                 security = sec_r.json() if sec_r.status_code == 200 else {}
 
                 db_meta: dict = {"doc_count": len(docs)}
+                vault_meta = None
                 if db.startswith("vault_"):
-                    meta = self.get_vault_meta(db)
-                    if meta:
-                        db_meta["vault_name"] = meta.get("vault_name")
-                        db_meta["username"] = meta.get("username")
+                    vault_meta = self.get_vault_meta(db)
+                    if vault_meta:
+                        db_meta["vault_name"] = vault_meta.get("vault_name")
+                        db_meta["username"] = vault_meta.get("username")
 
-                lines = [json.dumps({"type": "header", "db": db, "security": security})]
+                lines = [json.dumps({"type": "header", "db": db, "security": security, "vault_meta": vault_meta})]
                 lines += [json.dumps(doc) for doc in docs]
                 content = ("\n".join(lines) + "\n").encode()
 
@@ -732,8 +733,9 @@ class CouchDB:
         Restore databases from a backup archive.
 
         Vault databases are dropped and recreated for a clean restore. The
-        _users and vaultkeeper_data databases are merged (existing documents
-        are left in place; backed-up documents that conflict are skipped).
+        _users and vaultkeeper_data databases are merged: documents present
+        in the backup overwrite any existing document with the same ID;
+        documents not present in the backup are left untouched.
 
         If databases is None, all databases in the archive are restored.
         Returns a dict mapping each db name to the number of documents restored.
@@ -778,10 +780,26 @@ class CouchDB:
                     if r.status_code != 200:
                         raise CouchDBError(f"Failed to set security on '{db}': {r.status_code} {r.text}")
 
-                # Strip _rev so each document is inserted as a new revision.
-                # For _users and vaultkeeper_data, conflicts with existing docs
-                # are silently skipped by CouchDB's bulk_docs response.
-                clean = [{k: v for k, v in doc.items() if k != "_rev"} for doc in docs]
+                # Look up current revisions for any docs that already exist, so
+                # restoring overwrites them with the backed-up version instead of
+                # being silently skipped as a conflict by _bulk_docs.
+                existing_revs: dict[str, str] = {}
+                if docs:
+                    r = self._session.post(
+                        self._url(db, "_all_docs"),
+                        data=json.dumps({"keys": [doc["_id"] for doc in docs]}),
+                    )
+                    if r.status_code == 200:
+                        for row in r.json().get("rows", []):
+                            if row.get("value") and not row.get("error"):
+                                existing_revs[row["id"]] = row["value"]["rev"]
+
+                clean = []
+                for doc in docs:
+                    d = {k: v for k, v in doc.items() if k != "_rev"}
+                    if d["_id"] in existing_revs:
+                        d["_rev"] = existing_revs[d["_id"]]
+                    clean.append(d)
                 if clean:
                     r = self._session.post(
                         self._url(db, "_bulk_docs"),
@@ -789,6 +807,17 @@ class CouchDB:
                     )
                     if r.status_code not in (200, 201):
                         raise CouchDBError(f"Failed to restore docs to '{db}': {r.status_code} {r.text}")
+
+                # _local/ docs are excluded from _all_docs and must be restored separately.
+                vault_meta = header.get("vault_meta")
+                if vault_meta:
+                    clean_meta = {k: v for k, v in vault_meta.items() if k != "_rev"}
+                    r = self._session.put(
+                        self._url(db, "_local", "vaultkeeper"),
+                        data=json.dumps(clean_meta),
+                    )
+                    if r.status_code not in (200, 201):
+                        raise CouchDBError(f"Failed to restore vault metadata for '{db}': {r.status_code} {r.text}")
 
                 results[db] = len(clean)
                 LOGGER.info(f"Restored '{db}': {len(clean)} document(s)")

@@ -70,7 +70,7 @@
       <div class="font-bold">Data will be overwritten</div>
       <div class="text-sm">
         Vault databases are deleted and recreated from the backup.
-        User and configuration databases are merged — existing documents that conflict with backed-up ones will be left as-is.
+        User and configuration databases are merged — documents in the backup overwrite any existing document with the same ID; other existing documents are left untouched.
       </div>
     </div>
   </div>
