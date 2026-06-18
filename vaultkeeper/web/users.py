@@ -29,6 +29,7 @@ def users_list():
             client.log_audit_event("user.create", actor=_current_user(), target=username)
             if is_htmx():
                 html = render_template("_partials/user_row.html", username=username)
+                html += '<tr id="no-users-row" hx-swap-oob="delete"></tr>'
                 return htmx_response(
                     html,
                     toast={"message": f"User '{username}' created.", "type": "success"},
