@@ -4,7 +4,10 @@
 {% block content %}
 <div class="flex justify-between items-center mb-6">
   <h1 class="text-2xl font-bold">Backups</h1>
-  <a href="{{ url_for('backup.backup_new') }}" class="btn btn-primary btn-sm">Create backup</a>
+  <div class="flex gap-2">
+    <a href="{{ url_for('backup.backup_upload') }}" class="btn btn-outline btn-sm">Upload backup</a>
+    <a href="{{ url_for('backup.backup_new') }}" class="btn btn-primary btn-sm">Create backup</a>
+  </div>
 </div>
 
 {% if backups %}
@@ -69,7 +72,10 @@
 {% else %}
 <div class="text-center py-16 text-base-content/40">
   <p class="mb-4">No backups yet.</p>
-  <a href="{{ url_for('backup.backup_new') }}" class="btn btn-primary btn-sm">Create your first backup</a>
+  <div class="flex justify-center gap-2">
+    <a href="{{ url_for('backup.backup_new') }}" class="btn btn-primary btn-sm">Create your first backup</a>
+    <a href="{{ url_for('backup.backup_upload') }}" class="btn btn-outline btn-sm">Upload a backup</a>
+  </div>
 </div>
 {% endif %}
 {% endblock %}

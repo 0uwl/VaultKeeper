@@ -852,11 +852,18 @@ class CouchDB:
         return results
 
     def read_backup_manifest(self, path: str) -> dict:
-        """Read and return the manifest from a backup archive."""
+        """Read and validate the manifest from a backup archive."""
         try:
             with tarfile.open(path, "r:gz") as tar:
                 m = tar.getmember("manifest.json")
-                return json.loads(tar.extractfile(m).read())
+                manifest = json.loads(tar.extractfile(m).read())
+                if not isinstance(manifest, dict) or not isinstance(manifest.get("databases"), dict):
+                    raise CouchDBError("manifest.json is missing the 'databases' field.")
+                names = set(tar.getnames())
+                missing = [db for db in manifest["databases"] if f"{db}.ndjson" not in names]
+                if missing:
+                    raise CouchDBError(f"archive is missing data for: {', '.join(missing)}")
+                return manifest
         except (OSError, tarfile.TarError, KeyError, json.JSONDecodeError) as e:
             raise CouchDBError(f"Could not read backup manifest: {e}") from e
 
