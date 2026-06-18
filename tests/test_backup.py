@@ -448,6 +448,23 @@ def test_restore_does_not_delete_docs_absent_from_backup(couchdb_client: CouchDB
         couchdb_client.delete_invitation(token)
 
 
+def test_restore_recreates_deleted_user(couchdb_client: CouchDB, managed_user, backup_dir):
+    """
+    Regression test: a user deleted after the backup was taken must come back
+    after restoring _users. CouchDB leaves a deletion tombstone behind, and
+    reusing that tombstone's rev on the restored doc causes CouchDB to reject
+    the write with a conflict - the restore must create a fresh doc instead.
+    """
+    username, _ = managed_user
+    dest = os.path.join(backup_dir, "b.tar.gz")
+    couchdb_client.backup(dest, [], include_users=True)
+    couchdb_client.delete_user(username)
+    assert not couchdb_client.user_exists(username)
+
+    couchdb_client.restore(dest, ["_users"])
+    assert couchdb_client.user_exists(username)
+
+
 def test_restore_db_not_in_archive_raises(couchdb_client: CouchDB, managed_vault, backup_dir):
     _, _, db_name = managed_vault
     dest = os.path.join(backup_dir, "b.tar.gz")

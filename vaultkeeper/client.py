@@ -783,7 +783,10 @@ class CouchDB:
 
                 # Look up current revisions for any docs that already exist, so
                 # restoring overwrites them with the backed-up version instead of
-                # being silently skipped as a conflict by _bulk_docs.
+                # being silently skipped as a conflict by _bulk_docs. Tombstones
+                # (deleted docs) are excluded: CouchDB rejects a write that reuses
+                # a deleted doc's rev with a conflict, so those must be recreated
+                # without a _rev instead.
                 existing_revs: dict[str, str] = {}
                 if docs:
                     r = self._session.post(
@@ -792,7 +795,7 @@ class CouchDB:
                     )
                     if r.status_code == 200:
                         for row in r.json().get("rows", []):
-                            if row.get("value") and not row.get("error"):
+                            if row.get("value") and not row.get("error") and not row["value"].get("deleted"):
                                 existing_revs[row["id"]] = row["value"]["rev"]
 
                 clean = []
@@ -808,6 +811,9 @@ class CouchDB:
                     )
                     if r.status_code not in (200, 201):
                         raise CouchDBError(f"Failed to restore docs to '{db}': {r.status_code} {r.text}")
+                    errors = [row for row in r.json() if row.get("error")]
+                    if errors:
+                        raise CouchDBError(f"Failed to restore {len(errors)} doc(s) to '{db}': {errors}")
 
                 # _local/ docs are excluded from _all_docs and must be restored separately.
                 vault_meta = header.get("vault_meta")
