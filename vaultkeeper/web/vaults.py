@@ -183,7 +183,7 @@ def vault_setup_uri(db_name):
             current_app.logger.error(f"Error when generating Setup URI for '{vault_name}': {str(e)}")
             flash(str(e), "error")
 
-    return render_template("setup_uri.html", db_name=db_name, username=username, result=result)
+    return render_template("setup_uri.html", db_name=db_name, username=username, vault_name=vault_name, result=result)
 
 
 @vaults.route("/vaults/<db_name>/backup", methods=["POST"])
