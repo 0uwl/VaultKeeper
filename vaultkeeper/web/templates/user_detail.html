@@ -97,14 +97,20 @@
 <div class="card bg-base-200 border border-error">
   <div class="card-body">
     <h2 class="card-title text-base text-error">Danger zone</h2>
-    <p class="text-base-content/50 text-sm mb-3">Deleting this user does not delete their vault databases.</p>
+    <p class="text-base-content/50 text-sm mb-3">By default, deleting this user does not delete their vault databases.</p>
     <button type="button" class="btn btn-error btn-sm w-fit" x-data
       @click="$dispatch('vk:confirm', {
         title: 'Delete user',
         message: 'Delete user {{ username }}? This cannot be undone.',
-        onConfirm: () => document.getElementById('del-user-detail').requestSubmit()
+        checkboxLabel: 'Also delete all their vaults',
+        onConfirm: (deleteVaults) => {
+          document.getElementById('del-user-detail-vaults').value = deleteVaults ? '1' : '';
+          document.getElementById('del-user-detail').requestSubmit();
+        }
       })">Delete user</button>
-    <form id="del-user-detail" method="post" action="{{ url_for('users.user_delete', username=username) }}" class="hidden"></form>
+    <form id="del-user-detail" method="post" action="{{ url_for('users.user_delete', username=username) }}" class="hidden">
+      <input type="hidden" name="delete_vaults" id="del-user-detail-vaults" value="">
+    </form>
   </div>
 </div>
 {% endif %}

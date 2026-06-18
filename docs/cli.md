@@ -21,7 +21,7 @@ cli server init                               # Apply LiveSync CouchDB config (i
 cli server login                              # Save login credentials to a file (in plain text)
 
 cli user create <username>                    # Create a CouchDB user
-cli user delete <username>                    # Delete a CouchDB user
+cli user delete <username> [--delete-vaults]  # Delete a CouchDB user (optionally with all their vaults)
 cli user list                                 # List all users
 cli user passwd <username>                    # Change a user's password
 

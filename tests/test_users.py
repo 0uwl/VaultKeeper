@@ -40,6 +40,23 @@ def test_delete_nonexistent_user_raises(couchdb_client: CouchDB):
         couchdb_client.delete_user("no_such_user_xyzzy")
 
 
+def test_delete_user_without_delete_vaults_keeps_vaults(couchdb_client: CouchDB, unique_username: str):
+    couchdb_client.create_user(unique_username, "password123")
+    db_name = couchdb_client.create_vault(unique_username, "testvault")
+    try:
+        couchdb_client.delete_user(unique_username)
+        assert couchdb_client.db_exists(db_name)
+    finally:
+        couchdb_client.delete_vault(db_name)
+
+
+def test_delete_user_with_delete_vaults_removes_vaults(couchdb_client: CouchDB, unique_username: str):
+    couchdb_client.create_user(unique_username, "password123")
+    db_name = couchdb_client.create_vault(unique_username, "testvault")
+    couchdb_client.delete_user(unique_username, delete_vaults=True)
+    assert not couchdb_client.db_exists(db_name)
+
+
 def test_change_password(couchdb_client: CouchDB, managed_user):
     username, _ = managed_user
     couchdb_client.change_password(username, "brand_new_password_456")

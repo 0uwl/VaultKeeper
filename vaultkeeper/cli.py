@@ -215,14 +215,18 @@ def user_create(host, admin, password, username, user_password):
 @user.command("delete")
 @common_options
 @click.argument("username")
+@click.option("--delete-vaults", is_flag=True, help="Also delete all of the user's vaults.")
 @click.option("--yes", is_flag=True, help="Skip confirmation prompt.")
-def user_delete(host, admin, password, username, yes):
+def user_delete(host, admin, password, username, delete_vaults, yes):
     """Delete a CouchDB user."""
     if not yes:
-        click.confirm(f"Delete user '{username}'? This cannot be undone.", abort=True)
+        message = f"Delete user '{username}'? This cannot be undone."
+        if delete_vaults:
+            message = f"Delete user '{username}' and all of their vaults? This cannot be undone."
+        click.confirm(message, abort=True)
     client = _get_client(host, admin, password)
     try:
-        client.delete_user(username)
+        client.delete_user(username, delete_vaults=delete_vaults)
         _ok(f"User '{username}' deleted.")
     except CouchDBError as e:
         _abort(str(e))

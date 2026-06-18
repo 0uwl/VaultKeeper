@@ -11,13 +11,19 @@
         @click="$dispatch('vk:confirm', {
           title: 'Delete user',
           message: 'Delete user {{ username }}? This cannot be undone.',
-          onConfirm: () => document.getElementById('del-user-{{ username }}').requestSubmit()
+          checkboxLabel: 'Also delete all their vaults',
+          onConfirm: (deleteVaults) => {
+            document.getElementById('del-user-{{ username }}-vaults').value = deleteVaults ? '1' : '';
+            document.getElementById('del-user-{{ username }}').requestSubmit();
+          }
         })">Delete</button>
       <form id="del-user-{{ username }}"
             hx-post="{{ url_for('users.user_delete', username=username) }}"
             hx-target="#user-row-{{ username }}"
             hx-swap="outerHTML"
-            class="hidden"></form>
+            class="hidden">
+        <input type="hidden" name="delete_vaults" id="del-user-{{ username }}-vaults" value="">
+      </form>
     </div>
   </td>
 </tr>

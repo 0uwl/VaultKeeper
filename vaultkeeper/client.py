@@ -407,9 +407,12 @@ class CouchDB:
             raise CouchDBError(f"Failed to create user '{username}': {r.status_code} {r.text}")
         LOGGER.info(f"Created new user '{username}'")
 
-    def delete_user(self, username: str) -> None:
+    def delete_user(self, username: str, delete_vaults: bool = False) -> None:
         if not self.user_exists(username):
             raise CouchDBError(f"User '{username}' does not exist.")
+        if delete_vaults:
+            for vault in self.list_vaults_for_user(username):
+                self.delete_vault(vault["db_name"])
         r = self._session.get(self._url(f"_users/org.couchdb.user:{username}"))
         rev = r.json().get("_rev")
         r = self._session.delete(
